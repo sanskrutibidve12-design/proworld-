@@ -5,8 +5,12 @@ export default function ProtectedRoute({ children }: any) {
   const token = localStorage.getItem("token");
   const user = JSON.parse(localStorage.getItem("user") || "{}");
 
-  if (!token || user.role !== "admin") {
-    return <Navigate to="/login" />;
+  if (!token) {
+    return <Navigate to="/login" />;  // no token = go to login
+  }
+
+  if (user.role !== "admin") {
+    return <Navigate to="/login" />;  // not admin = go to login
   }
 
   return children;

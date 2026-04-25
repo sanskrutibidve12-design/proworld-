@@ -2,12 +2,13 @@ import { useEffect, useState } from "react";
 import AdminLayout from "../../components/admin/adminlayout";
 import API from "../../api/api";
 import toast from "react-hot-toast";
-import { Plus, Edit2, Trash2, UserCheck, X, ChevronDown, Mail, Phone, Building2 } from "lucide-react";
+import { Plus } from "lucide-react";
 
 export default function Mentors() {
 
   const [mentors, setMentors] = useState<any[]>([]);
   const [colleges, setColleges] = useState<any[]>([]);
+  const [domains, setDomains] = useState<any[]>([]);
 
   const [showAdd, setShowAdd] = useState(false);
   const [editing, setEditing] = useState<any>(null);
@@ -21,8 +22,10 @@ export default function Mentors() {
   const [form, setForm] = useState({
     name: "",
     email: "",
-    mobile_no: "",   // ✅ FIXED
+    mobile_no: "",
     college: "",
+    domain: "",
+    role: "",
   });
 
   useEffect(() => {
@@ -33,13 +36,15 @@ export default function Mentors() {
     try {
       const query = new URLSearchParams(filter).toString();
 
-      const [men, colg] = await Promise.all([
+      const [men, colg, dom] = await Promise.all([
         API.get(`/mentors/?${query}`),
-        API.get("/colleges/")
+        API.get("/colleges/"),
+        API.get("/domains/"),
       ]);
 
       setMentors(men.data);
       setColleges(colg.data);
+      setDomains(dom.data);
 
     } catch {
       toast.error("Failed to fetch data ❌");
@@ -48,17 +53,56 @@ export default function Mentors() {
 
   // ✅ ADD
   const handleAdd = async () => {
+
+    if (!form.name || !form.email || !form.role) {
+      toast.error("All fields are required ❌");
+      return;
+    }
+
+    if (form.role === "college" && !form.college) {
+      toast.error("Select college ❌");
+      return;
+    }
+
+    if (form.role === "industry" && !form.domain) {
+      toast.error("Select domain ❌");
+      return;
+    }
+
     try {
-      await API.post("/mentors/", {
-        ...form,
-        college: Number(form.college),
-      });
+      const payload: any = {
+        name: form.name,
+        email: form.email,
+        mobile_no: form.mobile_no,
+        role: form.role,
+      };
+
+      if (form.role === "college") {
+        payload.college = Number(form.college);
+      }
+
+      if (form.role === "industry") {
+        payload.domain = Number(form.domain);
+      }
+
+      await API.post("/mentors/", payload);
 
       toast.success("Mentor added 🎉");
       setShowAdd(false);
+
+      setForm({
+        name: "",
+        email: "",
+        mobile_no: "",
+        college: "",
+        domain: "",
+        role: "",
+      });
+
       fetchAll();
 
-    } catch {
+    } catch (err: any) {
+      console.log(err.response?.data);
       toast.error("Error adding mentor ❌");
     }
   };
@@ -66,10 +110,22 @@ export default function Mentors() {
   // ✅ UPDATE
   const handleUpdate = async () => {
     try {
-      await API.put(`/mentors/${editing.id}/`, {
-        ...editing,
-        college: Number(editing.college),
-      });
+      const payload: any = {
+        name: editing.name,
+        email: editing.email,
+        mobile_no: editing.mobile_no,
+        role: editing.role,
+      };
+
+      if (editing.role === "college") {
+        payload.college = Number(editing.college);
+      }
+
+      if (editing.role === "industry") {
+        payload.domain = Number(editing.domain);
+      }
+
+      await API.put(`/mentors/${editing.id}/`, payload);
 
       toast.success("Mentor updated ✏️");
       setEditing(null);
@@ -84,11 +140,9 @@ export default function Mentors() {
   const handleDelete = async () => {
     try {
       await API.delete(`/mentors/${confirmDelete.id}/`);
-
       toast.success("Mentor deleted 🗑️");
       setConfirmDelete(null);
       fetchAll();
-
     } catch {
       toast.error("Delete failed ❌");
     }
@@ -143,7 +197,7 @@ export default function Mentors() {
           <table className="w-full border text-center">
             <thead className="bg-gray-100">
               <tr>
-                <th>ID</th><th>Name</th><th>Email</th><th>Mobile</th><th>College</th><th>Actions</th>
+                <th>ID</th><th>Name</th><th>Email</th><th>Mobile</th><th>College</th><th>Role</th><th>Actions</th>
               </tr>
             </thead>
 
@@ -155,6 +209,7 @@ export default function Mentors() {
                   <td>{m.email}</td>
                   <td>{m.mobile_no}</td>
                   <td>{m.college_name}</td>
+                  <td>{m.role}</td>
 
                   <td className="space-x-2">
                     <button onClick={() => setEditing(m)} className="bg-blue-500 text-white px-2 py-1 rounded">
@@ -183,10 +238,28 @@ export default function Mentors() {
             <input placeholder="Email" onChange={e => setForm({...form, email: e.target.value})} className={inputClass}/>
             <input placeholder="Mobile" onChange={e => setForm({...form, mobile_no: e.target.value})} className={inputClass}/>
 
-            <select onChange={e => setForm({...form, college: e.target.value})} className={selectClass}>
-              <option>Select College</option>
-              {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            {/* ROLE FIRST */}
+            <select onChange={e => setForm({...form, role: e.target.value})} className={selectClass}>
+              <option value="">Select Role</option>
+              <option value="college">College Mentor</option>
+              <option value="industry">Industry Mentor</option>
             </select>
+
+            {/* COLLEGE */}
+            {form.role === "college" && (
+              <select onChange={e => setForm({...form, college: e.target.value})} className={selectClass}>
+                <option>Select College</option>
+                {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            )}
+
+            {/* DOMAIN */}
+            {form.role === "industry" && (
+              <select onChange={e => setForm({...form, domain: e.target.value})} className={selectClass}>
+                <option>Select Domain</option>
+                {domains.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
 
             <div className="flex gap-2">
               <button onClick={handleAdd} className="bg-green-500 text-white px-4 py-2 rounded">Save</button>
@@ -199,7 +272,7 @@ export default function Mentors() {
 
       {/* EDIT MODAL */}
       {editing && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
+        <div className="fixed inset-0 z-50 bg-black/40 flex justify-center items-center">
           <div className="bg-white p-6 rounded w-96 space-y-2">
 
             <h3>Edit Mentor</h3>
@@ -208,9 +281,22 @@ export default function Mentors() {
             <input value={editing.email} onChange={e => setEditing({...editing, email: e.target.value})} className={inputClass}/>
             <input value={editing.mobile_no} onChange={e => setEditing({...editing, mobile_no: e.target.value})} className={inputClass}/>
 
-            <select value={editing.college} onChange={e => setEditing({...editing, college: Number(e.target.value)})} className={selectClass}>
-              {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+            <select value={editing.role} onChange={e => setEditing({...editing, role: e.target.value})} className={selectClass}>
+              <option value="college">College Mentor</option>
+              <option value="industry">Industry Mentor</option>
             </select>
+
+            {editing.role === "college" && (
+              <select value={editing.college} onChange={e => setEditing({...editing, college: Number(e.target.value)})} className={selectClass}>
+                {colleges.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+              </select>
+            )}
+
+            {editing.role === "industry" && (
+              <select value={editing.domain} onChange={e => setEditing({...editing, domain: Number(e.target.value)})} className={selectClass}>
+                {domains.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+              </select>
+            )}
 
             <div className="flex gap-2">
               <button onClick={handleUpdate} className="bg-green-500 text-white px-4 py-2">Save</button>
@@ -221,11 +307,12 @@ export default function Mentors() {
         </div>
       )}
 
-      {/* DELETE */}
+      {/* DELETE MODAL */}
       {confirmDelete && (
-        <div className="fixed inset-0 bg-black/40 flex justify-center items-center">
+        <div className="fixed inset-0 z-50 bg-black/40 flex justify-center items-center">
           <div className="bg-white p-5 rounded">
             <p>Delete this mentor?</p>
+
             <div className="flex gap-2 mt-3">
               <button onClick={handleDelete} className="bg-red-500 text-white px-4 py-2">Yes</button>
               <button onClick={() => setConfirmDelete(null)} className="border px-4 py-2">No</button>

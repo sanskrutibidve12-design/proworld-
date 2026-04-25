@@ -23,6 +23,9 @@ const navItems = [
   { label: "Colleges", path: "/admin/colleges", icon: Building2 },
   { label: "Courses", path: "/admin/courses", icon: BookOpen },
   { label: "Domains", path: "/admin/domains", icon: Globe },
+  { label: "Tasks", path: "/admin/tasks", icon: FileText },
+  { label: "Updates", path: "/admin/updates", icon: FileText },
+  { label: "Attendance", path: "/admin/attendance", icon: FileText },
 ];
 
 export default function Sidebar() {

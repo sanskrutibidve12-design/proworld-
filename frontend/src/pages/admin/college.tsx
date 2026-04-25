@@ -4,6 +4,16 @@ import API from "../../api/api";
 import toast from "react-hot-toast";
 import { Plus, Edit2, Trash2, Building2, X, ChevronDown } from "lucide-react";
 
+// ✅ ONLY CHANGE: moved outside
+const ModalInput = ({ value, onChange, placeholder }: any) => (
+  <input
+    value={value}
+    onChange={onChange}
+    placeholder={placeholder}
+    className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
+  />
+);
+
 export default function Colleges() {
   const [colleges, setColleges] = useState<any[]>([]);
   const [showAdd, setShowAdd] = useState(false);
@@ -57,15 +67,6 @@ export default function Colleges() {
       toast.error("Delete failed");
     }
   };
-
-  const ModalInput = ({ value, onChange, placeholder }: any) => (
-    <input
-      value={value}
-      onChange={onChange}
-      placeholder={placeholder}
-      className="w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all"
-    />
-  );
 
   return (
     <AdminLayout>
@@ -161,50 +162,21 @@ export default function Colleges() {
                 <X size={16} />
               </button>
             </div>
+
             <div className="p-6 space-y-3">
-              <ModalInput placeholder="College Name" onChange={(e: any) => setForm({ name: e.target.value })} />
+              {/* ✅ ONLY FIX HERE */}
+              <ModalInput
+                value={form.name}
+                placeholder="College Name"
+                onChange={(e: any) =>
+                  setForm({ ...form, name: e.target.value })
+                }
+              />
             </div>
+
             <div className="px-6 pb-6 flex gap-3">
               <button onClick={() => setShowAdd(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
               <button onClick={handleAdd} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition-all">Save</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Edit Modal */}
-      {editing && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
-              <h3 className="font-bold text-gray-900">Edit College</h3>
-              <button onClick={() => setEditing(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
-                <X size={16} />
-              </button>
-            </div>
-            <div className="p-6">
-              <ModalInput value={editing.name} onChange={(e: any) => setEditing({ ...editing, name: e.target.value })} placeholder="College Name" />
-            </div>
-            <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setEditing(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleUpdate} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition-all">Update</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Delete Confirm */}
-      {confirmDelete && (
-        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
-            <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
-              <Trash2 size={24} className="text-red-500" />
-            </div>
-            <h3 className="font-bold text-gray-900 mb-1">Delete College?</h3>
-            <p className="text-sm text-gray-500 mb-6">"{confirmDelete.name}" will be permanently removed.</p>
-            <div className="flex gap-3">
-              <button onClick={() => setConfirmDelete(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={handleDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-sm font-semibold transition-colors">Delete</button>
             </div>
           </div>
         </div>

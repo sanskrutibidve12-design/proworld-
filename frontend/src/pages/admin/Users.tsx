@@ -1,7 +1,12 @@
 import AdminLayout from "../../components/admin/adminlayout";
 import { useEffect, useState } from "react";
-import { Trash2, Edit2, Plus, Users, X, ChevronDown, Shield, UserCheck, GraduationCap } from "lucide-react";
+import {
+  Trash2, Edit2, Plus, Users, X,
+  ChevronDown, Shield, UserCheck, GraduationCap
+} from "lucide-react";
+import API from "../../api/api";
 
+// ─── Role Badge ───────────────────────────────────────────────────────────────
 const roleConfig: Record<string, { color: string; icon: any }> = {
   admin: { color: "bg-purple-50 text-purple-700 border-purple-200", icon: Shield },
   mentor: { color: "bg-blue-50 text-blue-700 border-blue-200", icon: UserCheck },
@@ -19,70 +24,89 @@ const RoleBadge = ({ role }: { role: string }) => {
   );
 };
 
-export default function Users() {
+// ─── Main Component ───────────────────────────────────────────────────────────
+export default function UsersPage() {
   const [users, setUsers] = useState<any[]>([]);
   const [filteredUsers, setFilteredUsers] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
   const [filter, setFilter] = useState("all");
   const [showAdd, setShowAdd] = useState(false);
   const [editingUser, setEditingUser] = useState<any>(null);
-  const [form, setForm] = useState({ email: "", username: "", password: "", role: "student" });
+  const [confirmDelete, setConfirmDelete] = useState<any>(null);
+  const [form, setForm] = useState({
+    email: "", username: "", password: "", role: "student"
+  });
 
   useEffect(() => { fetchUsers(); }, []);
 
   useEffect(() => {
-    setFilteredUsers(filter === "all" ? users : users.filter((u) => u.role === filter));
+    setFilteredUsers(
+      filter === "all" ? users : users.filter((u) => u.role === filter)
+    );
   }, [filter, users]);
 
+  // ─── Fetch ──────────────────────────────────────────────────────────────────
   const fetchUsers = async () => {
-    const res = await fetch("http://127.0.0.1:8000/users/", {
-      headers: { Authorization: "Bearer " + localStorage.getItem("token") },
-    });
-    const data = await res.json();
-    setUsers(data);
+    setLoading(true);
+    setError("");
+    try {
+      const res = await API.get("/users/");
+      setUsers(Array.isArray(res.data) ? res.data : []);
+    } catch (err: any) {
+      console.error("FETCH ERROR:", err);
+      setError("Failed to load users. " + (err?.response?.data?.error || ""));
+    }
     setLoading(false);
   };
 
-  const addUser = async () => {
-    const res = await fetch("http://127.0.0.1:8000/users/create/", {
-      method: "POST",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") },
-      body: JSON.stringify(form),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setUsers([...users, data]);
+  // ─── Add ────────────────────────────────────────────────────────────────────
+  const handleAdd = async () => {
+    try {
+      await API.post("/users/create/", form);
       setShowAdd(false);
       setForm({ email: "", username: "", password: "", role: "student" });
+      fetchUsers();
+    } catch (err: any) {
+      console.error("ADD ERROR:", err?.response?.data || err);
+      alert("Error creating user: " + JSON.stringify(err?.response?.data || "Unknown error"));
     }
   };
 
-  const updateUser = async () => {
-    const res = await fetch(`http://127.0.0.1:8000/users/update/${editingUser.id}/`, {
-      method: "PUT",
-      headers: { "Content-Type": "application/json", Authorization: "Bearer " + localStorage.getItem("token") },
-      body: JSON.stringify(editingUser),
-    });
-    const data = await res.json();
-    if (res.ok) {
-      setUsers(users.map((u) => (u.id === data.id ? data : u)));
+  // ─── Update ─────────────────────────────────────────────────────────────────
+  const handleUpdate = async () => {
+    try {
+      await API.put(`/users/update/${editingUser.id}/`, editingUser);
       setEditingUser(null);
+      fetchUsers();
+    } catch (err: any) {
+      console.error("UPDATE ERROR:", err?.response?.data || err);
+      alert("Error updating user");
     }
   };
 
-  const deleteUser = async (id: number) => {
-    if (!window.confirm("Delete this user?")) return;
-    await fetch(`http://127.0.0.1:8000/users/${id}/`, {
-      method: "DELETE",
-      headers: { Authorization: "Bearer " + localStorage.getItem("token") },
-    });
-    setUsers(users.filter((u) => u.id !== id));
-  };
+  // ─── Delete ─────────────────────────────────────────────────────────────────
+const handleDelete = async () => {
+  console.log("DELETE CLICKED");
 
+  try {
+    const res = await API.delete(`/users/${confirmDelete.id}/`);
+    console.log("DELETE RESPONSE", res);
+
+    setConfirmDelete(null);
+    fetchUsers();
+  } catch (err) {
+    console.log("DELETE ERROR", err);
+  }
+};
+
+  // ─── Styles ──────────────────────────────────────────────────────────────────
   const inputClass = "w-full border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all";
   const selectClass = "w-full appearance-none border border-gray-200 rounded-xl px-4 py-2.5 text-sm text-gray-700 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-400 transition-all pr-8";
+  const filterTabs = ["all", "admin", "mentor", "student"];
 
-  if (loading)
+  // ─── Loading ─────────────────────────────────────────────────────────────────
+  if (loading) {
     return (
       <AdminLayout>
         <div className="flex items-center justify-center h-64">
@@ -93,18 +117,35 @@ export default function Users() {
         </div>
       </AdminLayout>
     );
+  }
 
-  const filterTabs = ["all", "admin", "mentor", "student"];
+  // ─── Error ───────────────────────────────────────────────────────────────────
+  if (error) {
+    return (
+      <AdminLayout>
+        <div className="flex items-center justify-center h-64 flex-col gap-3">
+          <p className="text-red-500 text-sm font-medium">{error}</p>
+          <button
+            onClick={fetchUsers}
+            className="px-4 py-2 bg-blue-600 text-white rounded-xl text-sm font-semibold"
+          >
+            Retry
+          </button>
+        </div>
+      </AdminLayout>
+    );
+  }
 
   return (
     <AdminLayout>
       <div className="flex gap-6">
-        {/* Filter */}
+
+        {/* ── Filter Sidebar ── */}
         <div className="w-56 shrink-0">
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 sticky top-24">
             <h3 className="font-bold text-gray-800 text-sm mb-4">Filter by Role</h3>
             <div className="space-y-1">
-              {filterTabs.map(tab => (
+              {filterTabs.map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setFilter(tab)}
@@ -114,10 +155,15 @@ export default function Users() {
                       : "text-gray-600 hover:bg-gray-100"
                   }`}
                 >
-                  {tab === "all" ? <Users size={14} /> : tab === "admin" ? <Shield size={14} /> : tab === "mentor" ? <UserCheck size={14} /> : <GraduationCap size={14} />}
+                  {tab === "all" ? <Users size={14} />
+                    : tab === "admin" ? <Shield size={14} />
+                    : tab === "mentor" ? <UserCheck size={14} />
+                    : <GraduationCap size={14} />}
                   {tab.charAt(0).toUpperCase() + tab.slice(1)}
-                  <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${filter === tab ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"}`}>
-                    {tab === "all" ? users.length : users.filter(u => u.role === tab).length}
+                  <span className={`ml-auto text-xs px-1.5 py-0.5 rounded-full ${
+                    filter === tab ? "bg-white/20 text-white" : "bg-gray-100 text-gray-500"
+                  }`}>
+                    {tab === "all" ? users.length : users.filter((u) => u.role === tab).length}
                   </span>
                 </button>
               ))}
@@ -125,7 +171,7 @@ export default function Users() {
           </div>
         </div>
 
-        {/* Content */}
+        {/* ── Main Content ── */}
         <div className="flex-1 min-w-0">
           <div className="flex items-center justify-between mb-6">
             <div>
@@ -149,63 +195,78 @@ export default function Users() {
                 <p className="text-gray-600 font-medium">No users found</p>
               </div>
             ) : (
-              <table className="w-full">
-                <thead>
-                  <tr className="bg-gray-50 border-b border-gray-100">
-                    {["User", "Email", "Role", "Actions"].map(h => (
-                      <th key={h} className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {filteredUsers.map((u, i) => (
-                    <tr key={u.id} className={`hover:bg-blue-50/30 transition-colors ${i % 2 !== 0 ? "bg-gray-50/30" : ""}`}>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
-                            {u.username?.charAt(0)?.toUpperCase() || u.email?.charAt(0)?.toUpperCase()}
-                          </div>
-                          <div>
-                            <p className="text-sm font-semibold text-gray-800">{u.username}</p>
-                            <p className="text-xs text-gray-400">ID: #{u.id}</p>
-                          </div>
-                        </div>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
-                      <td className="px-6 py-4"><RoleBadge role={u.role} /></td>
-                      <td className="px-6 py-4">
-                        <div className="flex items-center gap-2">
-                          <button onClick={() => setEditingUser(u)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors">
-                            <Edit2 size={13} />
-                          </button>
-                          <button onClick={() => deleteUser(u.id)} className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors">
-                            <Trash2 size={13} />
-                          </button>
-                        </div>
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full">
+                  <thead>
+                    <tr className="bg-gray-50 border-b border-gray-100">
+                      {["User", "Email", "Role", "Actions"].map((h) => (
+                        <th key={h} className="text-left px-6 py-3.5 text-xs font-semibold text-gray-500 uppercase tracking-wider">
+                          {h}
+                        </th>
+                      ))}
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-gray-50">
+                    {filteredUsers.map((u, i) => (
+                      <tr key={u.id} className={`hover:bg-blue-50/30 transition-colors ${i % 2 !== 0 ? "bg-gray-50/30" : ""}`}>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-3">
+                            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-slate-600 to-slate-800 flex items-center justify-center text-white text-xs font-bold">
+                              {u.username?.charAt(0)?.toUpperCase() || u.email?.charAt(0)?.toUpperCase()}
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-gray-800">{u.username}</p>
+                              <p className="text-xs text-gray-400">ID: #{u.id}</p>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="px-6 py-4 text-sm text-gray-500">{u.email}</td>
+                        <td className="px-6 py-4"><RoleBadge role={u.role} /></td>
+                        <td className="px-6 py-4">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => setEditingUser(u)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-blue-50 hover:bg-blue-100 text-blue-600 transition-colors"
+                            >
+                              <Edit2 size={13} />
+                            </button>
+                            <button
+                              onClick={() => setConfirmDelete(u)}
+                              className="w-8 h-8 flex items-center justify-center rounded-lg bg-red-50 hover:bg-red-100 text-red-600 transition-colors"
+                            >
+                              <Trash2 size={13} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>
       </div>
 
-      {/* Add Modal */}
+      {/* ── Add Modal ── */}
       {showAdd && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-bold text-gray-900">Add User</h3>
-              <button onClick={() => setShowAdd(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"><X size={16} /></button>
+              <button onClick={() => setShowAdd(false)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">
+                <X size={16} />
+              </button>
             </div>
             <div className="p-6 space-y-3">
-              <input placeholder="Email Address" onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
-              <input placeholder="Username" onChange={(e) => setForm({ ...form, username: e.target.value })} className={inputClass} />
-              <input type="password" placeholder="Password" onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputClass} />
+              <input placeholder="Email Address" value={form.email}
+                onChange={(e) => setForm({ ...form, email: e.target.value })} className={inputClass} />
+              <input placeholder="Username" value={form.username}
+                onChange={(e) => setForm({ ...form, username: e.target.value })} className={inputClass} />
+              <input type="password" placeholder="Password" value={form.password}
+                onChange={(e) => setForm({ ...form, password: e.target.value })} className={inputClass} />
               <div className="relative">
-                <select onChange={(e) => setForm({ ...form, role: e.target.value })} className={selectClass}>
+                <select value={form.role} onChange={(e) => setForm({ ...form, role: e.target.value })} className={selectClass}>
                   <option value="student">Student</option>
                   <option value="mentor">Mentor</option>
                   <option value="admin">Admin</option>
@@ -214,26 +275,31 @@ export default function Users() {
               </div>
             </div>
             <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setShowAdd(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={addUser} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition-all">Create User</button>
+              <button onClick={() => setShowAdd(false)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50">Cancel</button>
+              <button onClick={handleAdd} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200">Create User</button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Edit Modal */}
+      {/* ── Edit Modal ── */}
       {editingUser && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
               <h3 className="font-bold text-gray-900">Edit User</h3>
-              <button onClick={() => setEditingUser(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition-colors"><X size={16} /></button>
+              <button onClick={() => setEditingUser(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400">
+                <X size={16} />
+              </button>
             </div>
             <div className="p-6 space-y-3">
-              <input value={editingUser.email} onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })} className={inputClass} />
-              <input value={editingUser.username} onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })} className={inputClass} />
+              <input value={editingUser.email}
+                onChange={(e) => setEditingUser({ ...editingUser, email: e.target.value })} className={inputClass} />
+              <input value={editingUser.username}
+                onChange={(e) => setEditingUser({ ...editingUser, username: e.target.value })} className={inputClass} />
               <div className="relative">
-                <select value={editingUser.role} onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })} className={selectClass}>
+                <select value={editingUser.role}
+                  onChange={(e) => setEditingUser({ ...editingUser, role: e.target.value })} className={selectClass}>
                   <option value="student">Student</option>
                   <option value="mentor">Mentor</option>
                   <option value="admin">Admin</option>
@@ -242,8 +308,25 @@ export default function Users() {
               </div>
             </div>
             <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setEditingUser(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
-              <button onClick={updateUser} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition-all">Save Changes</button>
+              <button onClick={() => setEditingUser(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50">Cancel</button>
+              <button onClick={handleUpdate} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200">Save Changes</button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Delete Confirm ── */}
+      {confirmDelete && (
+        <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm p-6 text-center">
+            <div className="w-14 h-14 bg-red-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Trash2 size={24} className="text-red-500" />
+            </div>
+            <h3 className="font-bold text-gray-900 mb-1">Delete User?</h3>
+            <p className="text-sm text-gray-500 mb-6">"{confirmDelete.username}" will be permanently removed.</p>
+            <div className="flex gap-3">
+              <button onClick={() => setConfirmDelete(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50">Cancel</button>
+              <button onClick={handleDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-sm font-semibold">Delete</button>
             </div>
           </div>
         </div>

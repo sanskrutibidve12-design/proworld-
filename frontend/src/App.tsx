@@ -18,12 +18,29 @@ import NotFound from "./pages/NotFound";
 import ProtectedRoute from "./components/admin/ProtectedRoute";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import Users from "./pages/admin/Users";
-import Students from "./pages/admin/Students";
+import AdminStudents from "./pages/admin/Students";
 import Applications from "./pages/admin/Applications";
 import Mentor from "./pages/admin/mentor";
 import Colleges from "./pages/admin/college";
 import Courses from "./pages/admin/courses";
 import Domains from "./pages/admin/domain";
+import StudentRoute from "./components/student/StudentRoute";
+import StudentDashboard from "./pages/student/StudentDashboard";
+import TaskHistory from "./pages/student/TaskHistory";
+import FeedbackPage from "./pages/student/Feedback";
+import ProfilePage from "./pages/student/Profile";
+import AttendancePage from "./pages/student/Attendance";
+import WeeklyReportPage from "./pages/student/WeeklyReport";  
+import MentorRoute from "./components/mentor/MentorRoute";
+import Tasks from "./pages/admin/tasks";
+import AdminAttendance from "./pages/admin/AdminAttendance";
+import AdminUpdates from "./pages/admin/AdminUpdates";
+import CollegeDashboard from "./pages/mentor/CollegeDashboard";
+import IndustryDashboard from "./pages/mentor/IndustryDashboard";
+import MentorStudents from "./pages/mentor/Students";
+import MentorAttendance from "@/pages/mentor/Attendance";
+import MentorUpdates from "@/pages/mentor/Updates";
+
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -44,16 +61,35 @@ const App = () => (
           <Route path="/works" element={<Layout><Works /></Layout>} />
           <Route path="/contact" element={<Layout><Contact /></Layout>} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/admin/dashboard" element={<AdminDashboard />} />
-          <Route path="/admin/dashboard"element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>}/>
+         <Route path="/admin/dashboard"element={<ProtectedRoute><AdminDashboard /></ProtectedRoute>}/>
           <Route path="/admin/users"element={<ProtectedRoute><Users /></ProtectedRoute>}/>
-          <Route path="/admin/students" element={<ProtectedRoute><Students /></ProtectedRoute>} />
+          <Route path="/admin/students" element={<ProtectedRoute><AdminStudents /></ProtectedRoute>} />
           <Route path="/admin/applications" element={<ProtectedRoute><Applications /></ProtectedRoute>} />
           <Route path="/admin/mentor" element={<ProtectedRoute><Mentor /></ProtectedRoute>} />
           <Route path="/admin/colleges" element={<ProtectedRoute><Colleges /></ProtectedRoute>} />
           <Route path="/admin/courses" element={<ProtectedRoute><Courses /></ProtectedRoute>} />
           <Route path="/admin/domains" element={<ProtectedRoute><Domains /></ProtectedRoute>} />
+          <Route path="/admin/tasks" element={<ProtectedRoute><Tasks /></ProtectedRoute>} />
+          <Route path="/admin/updates" element={<ProtectedRoute><AdminUpdates /></ProtectedRoute>} />
+          <Route path="/admin/attendance" element={<ProtectedRoute><AdminAttendance /></ProtectedRoute>} />
           <Route path="/create-account/:token" element={<Signup />} />
+          <Route path="/student/StudentDashboard" element={<StudentRoute><StudentDashboard /></StudentRoute>} />
+          <Route path="/student/feedback" element={<StudentRoute><FeedbackPage /></StudentRoute>} />
+          <Route path="/student/taskhistory" element={<StudentRoute><TaskHistory /></StudentRoute>} />
+          <Route path="/student/profile" element={<StudentRoute><ProfilePage /></StudentRoute>} />
+          <Route path="/student/Attendance" element={<StudentRoute><AttendancePage /></StudentRoute>} />
+          <Route path="/student/WeeklyReport" element={<StudentRoute><WeeklyReportPage /></StudentRoute>} />
+         {/* COLLEGE MENTOR */}
+<Route path="/mentor/college/dashboard" element={<MentorRoute><CollegeDashboard /></MentorRoute>} />
+<Route path="/mentor/college/students" element={<MentorRoute><MentorStudents /></MentorRoute>} />
+<Route path="/mentor/college/attendance" element={<MentorRoute><MentorAttendance /></MentorRoute>} />
+<Route path="/mentor/college/updates" element={<MentorRoute><MentorUpdates /></MentorRoute>} />
+
+{/* INDUSTRY MENTOR */}
+<Route path="/mentor/industry/dashboard" element={<MentorRoute><IndustryDashboard /></MentorRoute>} />
+<Route path="/mentor/industry/students" element={<MentorRoute><MentorStudents /></MentorRoute>} />
+<Route path="/mentor/industry/attendance" element={<MentorRoute><MentorAttendance /></MentorRoute>} />
+<Route path="/mentor/industry/updates" element={<MentorRoute><MentorUpdates /></MentorRoute>} />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

@@ -20,7 +20,7 @@ export default function Login() {
     e.preventDefault();
 
     try {
-      const res = await fetch("http://127.0.0.1:8000/login/", {
+      const res = await fetch("http://127.0.0.1:8000/api/login/", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -44,24 +44,32 @@ export default function Login() {
 
       // 🔐 STORE TOKEN
       localStorage.setItem("token", data.access);
-
+      localStorage.setItem("mentor_type", data.mentor_type);
       // 💾 OPTIONAL: store user info
       localStorage.setItem("user", JSON.stringify(data));
-
+      localStorage.setItem("name", data.name);
       toast({
         title: "Login Successful ✅",
         description: "Redirecting...",
       });
-
+     console.log(data.role);
       // 🚀 ROLE BASED REDIRECT
       if (data.role === "admin") {
         navigate("/admin/dashboard");
       } 
       else if (data.role === "mentor") {
-        navigate("/");
+        if (data.mentor_type === "college") {
+          navigate("/mentor/college/dashboard");
+        }
+        else{
+          navigate("/mentor/industry/dashboard");
+        }
+      }
+      else if (data.role=="student"){
+        navigate("/student/StudentDashboard");
       }
       else {
-        navigate("/");
+        navigate("/student/StudentDashboard");
       }
 
     } catch (error) {

@@ -1,5 +1,9 @@
 
+from os import link
+
+from arrow import now
 from django.contrib.auth import get_user_model
+from openai import models
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated, AllowAny
@@ -9,7 +13,7 @@ from django.db.models import Count
 import uuid
 from django.conf import settings
 from django.core.mail import send_mail
-from .models import Application, Domain, Student, Course, College, Mentor,User
+from .models import Application, Domain, MentorRemark, Student, Course, College, Mentor,User
 from .serializers import (
     UserSerializer,
     ApplicationSerializer,
@@ -28,6 +32,7 @@ User = get_user_model()
 def login_view(request):
     email = request.data.get('email')
     password = request.data.get('password')
+    
 
     try:
         user = User.objects.get(email=email)
@@ -38,12 +43,23 @@ def login_view(request):
         return Response({"error": "Invalid password"}, status=400)
 
     refresh = RefreshToken.for_user(user)
+    mentor_type = None
+
+    if user.role == "mentor":
+     try:
+        mentor = Mentor.objects.get(user=user)
+        mentor_type = mentor.role   # college / industry
+     except Mentor.DoesNotExist:
+        mentor_type = None
+    
 
     return Response({
         "access": str(refresh.access_token),
         "refresh": str(refresh),
         "role": user.role,
-        "email": user.email
+        "email": user.email,
+        "mentor_type": mentor_type,
+        "name":user.username,
     })
 
 
@@ -54,16 +70,7 @@ def protected_view(request):
     return Response({"message": "Authenticated"})
 
 
-# 👥 USERS
-@api_view(['GET'])
-@permission_classes([IsAuthenticated])
-def get_users(request):
-    if request.user.role != "admin":
-        return Response({"error": "Unauthorized"}, status=403)
-
-    users = User.objects.all()
-    return Response(UserSerializer(users, many=True).data)
-
+# 👥 USERS get_users function was there
 
 # 🚀 APPLICATION VIEWSET
 class ApplicationViewSet(ModelViewSet):
@@ -123,7 +130,7 @@ def get_colleges(request):
     return Response(CollegeSerializer(colleges, many=True).data)
 
 # 🎓 MENTOR VIEWSET (🔥 THIS FIXES YOUR ISSUE)
-class MentorViewSet(ModelViewSet):
+'''class MentorViewSet(ModelViewSet):
     queryset = Mentor.objects.all()
     serializer_class = MentorSerializer
     permission_classes = [IsAuthenticated]
@@ -134,8 +141,63 @@ class MentorViewSet(ModelViewSet):
         college = self.request.query_params.get('college')
         if college:
             queryset = queryset.filter(college_id=int(college))
+        return queryset'''
+
+class MentorViewSet(ModelViewSet):
+    queryset = Mentor.objects.all()
+    serializer_class = MentorSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = Mentor.objects.all()
+
+        college = self.request.query_params.get('college')
+        role = self.request.query_params.get('role')
+
+        if college:
+            queryset = queryset.filter(college_id=int(college))
+
+        if role:
+            queryset = queryset.filter(role=role)
+
         return queryset
     
+    def perform_destroy(self, instance):
+    # delete linked user first
+     if instance.user:
+        instance.user.delete()
+
+    # then delete mentor
+     instance.delete()
+    def perform_create(self, serializer):
+        mentor = serializer.save()
+        print("mentor created", mentor.email)
+
+        # 🔥 generate token
+        token = str(uuid.uuid4())
+        mentor.token = token
+        mentor.save()
+
+        # 🔗 link
+        link = f"http://localhost:8080/create-account/{token}"
+
+        # 📧 send email
+        send_mail(
+            subject="Create Your Mentor Account",
+            message=f"""
+Hello {mentor.name},
+
+You have been added as a mentor.
+
+Create your account here:
+{link}
+""",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[mentor.email],
+            
+        )
+    
+
 class CollegeViewSet(ModelViewSet):
     queryset = College.objects.all()
     serializer_class = CollegeSerializer
@@ -261,37 +323,696 @@ Create your account here:
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def create_account(request, token):
+    print("api hit")
+
+    password = request.data.get("password")
+
+    # ───── TRY STUDENT FIRST ─────
     try:
         app = Application.objects.get(token=token)
 
         if app.status != "approved":
             return Response({"error": "Application not approved"}, status=400)
 
-        # check if already created
-        if User.objects.filter(email=app.email).exists():
-            return Response({"error": "Account already exists"}, status=400)
+        student = Student.objects.get(email=app.email)
 
-        password = request.data.get("password")
+        if student.is_registered:
+            return Response({"error": "Account already created"}, status=400)
 
-        # 🔥 CREATE USER
+        # ✅ create user
         user = User.objects.create(
+            username=app.email,
             email=app.email,
             role="student"
         )
         user.set_password(password)
         user.save()
 
-        # 🔥 CREATE STUDENT
-        Student.objects.create(
-            user=user,
-            name=app.name,
-            email=app.email,
-            domain=app.domain,
-            course=app.course,
-            college=app.college
-        )
+        # link student
+        student.user = user
+        student.is_registered = True
+        student.save()
 
-        return Response({"message": "Account created successfully"})
+        return Response({"message": "Student account created"})
 
     except Application.DoesNotExist:
+        pass
+
+
+    # ───── TRY MENTOR ─────
+    try:
+        mentor = Mentor.objects.get(token=token)
+
+        if mentor.is_registered:
+            return Response({"error": "Account already created"}, status=400)
+
+        # ✅ create user
+        user = User.objects.create(
+            username=mentor.email,
+            email=mentor.email,
+            role="mentor"
+        )
+        user.set_password(password)
+        user.save()
+
+        # link mentor
+        mentor.user = user
+        mentor.is_registered = True
+        mentor.save()
+
+        return Response({"message": "Mentor account created"})
+
+    except Mentor.DoesNotExist:
         return Response({"error": "Invalid token"}, status=404)
+
+
+class UserViewSet(ModelViewSet):
+    queryset = User.objects.all()
+    serializer_class = UserSerializer
+    permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        # also delete related mentor or student if needed
+        try:
+            if hasattr(instance, 'mentor'):
+                instance.mentor.delete()
+        except:
+            pass
+
+        try:
+            if hasattr(instance, 'student'):
+                instance.student.delete()
+        except:
+            pass
+
+        instance.delete()
+
+
+# Add these to your existing accounts/views.py
+# These are the NEW endpoints needed for the student panel
+
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
+from django.db.models import Count
+from datetime import date, timedelta
+
+from .models import (
+    Student, DailyUpdate, DailyTask,
+    Attendance, Mentor
+)
+from .serializers import (
+    DailyUpdateSerializer, DailyTaskSerializer,
+    AttendanceSerializer
+)
+
+
+# ─── HELPER: get student from logged in user ──────────────────────────────────
+def get_student_for_user(user):
+    try:
+        return Student.objects.get(user=user)
+    except Student.DoesNotExist:
+        return None
+
+
+# ─── DAILY UPDATE: List + Create ─────────────────────────────────────────────
+'''@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def daily_updates(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    if request.method == 'GET':
+        updates = DailyUpdate.objects.filter(student=student).order_by('-date')
+        return Response(DailyUpdateSerializer(updates, many=True).data)
+
+    if request.method == 'POST':
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({"error": "Content is required"}, status=400)
+
+        # One update per day
+        today = date.today()
+        update, created = DailyUpdate.objects.get_or_create(
+            student=student,
+            date=today,
+            defaults={'content': content}
+        )
+        if not created:
+            update.content = content
+            update.save()
+
+        return Response(DailyUpdateSerializer(update).data, status=201)'''
+
+from django.db.models import Q
+
+# ─── DAILY TASKS: List for today ─────────────────────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_tasks(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    all_param = request.query_params.get('all')
+    
+    # ✅ fetch tasks for student's domain
+    
+    tasks = DailyTask.objects.filter(
+       Q(domain=student.domain) | Q(assigned_to=student)
+        )
+   
+    if not all_param:
+            today = now().date()
+            tasks = tasks.filter(date=today)
+
+    # ✅ annotate each task with whether THIS student completed it
+    result = []
+    for task in tasks:
+        result.append({
+            "id": task.id,
+            "title": task.title,
+            "description": task.description,
+            "date": str(task.date),
+            "completed": student in task.completed_by.all()
+        })
+
+    return Response(result)
+
+
+@api_view(['PATCH'])
+@permission_classes([IsAuthenticated])
+def complete_task(request, task_id):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    try:
+        task = DailyTask.objects.get(id=task_id)
+    except DailyTask.DoesNotExist:
+        return Response({"error": "Task not found"}, status=404)
+
+    # ✅ toggle completion for this student
+    if student in task.completed_by.all():
+        task.completed_by.remove(student)
+        completed = False
+    else:
+        task.completed_by.add(student)
+        completed = True
+
+    return Response({"id": task.id, "completed": completed})
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_progress(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    # ✅ count domain tasks, not personal tasks
+    all_tasks = DailyTask.objects.filter(domain=student.domain)
+    total = all_tasks.count()
+    completed = all_tasks.filter(completed_by=student).count()
+
+    # streak calculation
+    from datetime import timedelta
+    updates = list(
+        DailyUpdate.objects.filter(student=student)
+        .order_by('-date')
+        .values_list('date', flat=True)
+    )
+    streak = 0
+    check_date = date.today()
+    for update_date in updates:
+        if update_date == check_date:
+            streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+
+    return Response({
+        "total_tasks": total,
+        "completed_tasks": completed,
+        "percentage": round((completed / total * 100), 1) if total > 0 else 0,
+        "streak": streak,
+    })
+# ─── ATTENDANCE: View my attendance ──────────────────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_attendance(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    records = Attendance.objects.filter(student=student).order_by('-date')
+
+    # Stats
+    total = records.count()
+    present = records.filter(present=True).count()
+
+    return Response({
+        "stats": {
+            "total": total,
+            "present": present,
+            "absent": total - present,
+            "percentage": round((present / total * 100), 1) if total > 0 else 0
+        },
+        "records": AttendanceSerializer(records, many=True).data
+    })
+
+
+# ─── PROGRESS: Task completion % ─────────────────────────────────────────────
+'''@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_progress(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    all_tasks = DailyTask.objects.filter(assigned_to=student)
+    total = all_tasks.count()
+    completed = all_tasks.filter(completed=True).count()
+
+    # Streak: consecutive days with a daily update
+    updates = DailyUpdate.objects.filter(student=student).order_by('-date').values_list('date', flat=True)
+    streak = 0
+    check_date = date.today()
+    for update_date in updates:
+        if update_date == check_date:
+            streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+
+    return Response({
+        "total_tasks": total,
+        "completed_tasks": completed,
+        "percentage": round((completed / total * 100), 1) if total > 0 else 0,
+        "streak": streak
+    })
+'''
+
+# ─── WEEKLY REPORT: Get updates + tasks for a week ───────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def weekly_report(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    # ?week_start=YYYY-MM-DD  (defaults to current week Monday)
+    week_start_str = request.query_params.get('week_start')
+    if week_start_str:
+        try:
+            week_start = date.fromisoformat(week_start_str)
+        except ValueError:
+            return Response({"error": "Invalid date format"}, status=400)
+    else:
+        today = date.today()
+        week_start = today - timedelta(days=today.weekday())  # Monday
+
+    week_end = week_start + timedelta(days=6)
+
+    updates = DailyUpdate.objects.filter(
+        student=student, date__range=[week_start, week_end]
+    ).order_by('date')
+
+    tasks = DailyTask.objects.filter(
+       domain=student.domain, date__range=[week_start, week_end]
+        ).order_by('date')
+
+    return Response({
+        "week_start": week_start,
+        "week_end": week_end,
+        "updates": DailyUpdateSerializer(updates, many=True).data,
+        "tasks": DailyTaskSerializer(tasks, many=True).data,
+    })
+
+
+# ─── STUDENT PROFILE: View + Update ─────────────────────────────────────────
+'''@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def my_profile(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    if request.method == 'GET':
+        return Response({
+            "name": student.name,
+            "email": student.email,          # read-only in frontend
+            "roll_no": student.roll_no,
+            "mobile_no": student.mobile_no,
+            "college": student.college.name, # read-only in frontend
+            "course": student.course.name,
+            "domain": student.domain.name,
+        })
+
+    if request.method == 'PATCH':
+        # Only allow editable fields
+        allowed = ['name', 'roll_no', 'mobile_no']
+        for field in allowed:
+            value = request.data.get(field)
+            if value is not None:
+                setattr(student, field.replace('_no', '_no'), value)
+
+        # Handle name update in user model too
+        if 'name' in request.data:
+            student.name = request.data['name']
+
+        student.save()
+
+        # Also update username if name changed
+        if 'name' in request.data and student.user:
+            student.user.first_name = request.data['name'].split()[0]
+            student.user.save()
+
+        return Response({"message": "Profile updated successfully"})
+'''
+
+# ─── NOTIFICATIONS: Mentor feedback notifications ────────────────────────────
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_notifications(request):
+    """
+    For now returns feedback-based notifications.
+    Extend this with a proper Notification model later.
+    """
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    # Placeholder: return recent updates that have mentor remarks
+    # TODO: Replace with a Notification model
+    from .models import DailyUpdate
+    recent_updates = DailyUpdate.objects.filter(student=student).order_by('-date')[:10]
+
+    notifications = []
+    for update in recent_updates:
+        # Check if mentor left a remark (add MentorRemark model for this)
+        # This is a scaffold - wire up to actual remark model
+        pass
+
+    return Response({
+        "notifications": notifications,
+        "unread_count": 0
+    })
+
+# ─── REPLACE these two views in your accounts/views.py ───────────────────────
+
+from datetime import date
+
+# 1. DAILY UPDATES — fixed today's update detection
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def daily_updates(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    if request.method == 'GET':
+        updates = DailyUpdate.objects.filter(student=student).order_by('-date')
+        return Response(DailyUpdateSerializer(updates, many=True).data)
+
+    if request.method == 'POST':
+        content = request.data.get('content', '').strip()
+        if not content:
+            return Response({"error": "Content is required"}, status=400)
+
+        today = date.today()
+
+        # ✅ Save or update daily update
+        update, created = DailyUpdate.objects.get_or_create(
+            student=student,
+            date=today,
+            defaults={'content': content}
+        )
+        if not created:
+            update.content = content
+            update.save()
+
+        # ✅ AUTO MARK ATTENDANCE — present when update is submitted
+        Attendance.objects.get_or_create(
+            student=student,
+            date=today,
+            defaults={'present': True}
+        )
+        # If attendance record already exists, make sure it's marked present
+        Attendance.objects.filter(student=student, date=today).update(present=True)
+
+        return Response(DailyUpdateSerializer(update).data, status=201)
+
+# 2. PROFILE — added internship_start / internship_end
+@api_view(['GET', 'PATCH'])
+@permission_classes([IsAuthenticated])
+def my_profile(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    if request.method == 'GET':
+        return Response({
+            "name": student.name,
+            "email": student.email,
+            "roll_no": student.roll_no,
+            "mobile_no": student.mobile_no or "",
+            "college": student.college.name,
+            "course": student.course.name,
+            "domain": student.domain.name,
+            # Add internship_start / internship_end to your Student model
+            # if you want these — for now returns None
+            "internship_start": getattr(student, 'internship_start', None),
+            "internship_end": getattr(student, 'internship_end', None),
+        })
+
+    if request.method == 'PATCH':
+        allowed_fields = ['name', 'roll_no', 'mobile_no']
+        for field in allowed_fields:
+            value = request.data.get(field)
+            if value is not None:
+                setattr(student, field, value)
+        student.save()
+
+        # Sync name to User model too
+        if 'name' in request.data and student.user:
+            student.user.first_name = request.data['name'].split()[0]
+            student.user.save()
+
+        return Response({"message": "Profile updated successfully"})
+
+
+# 3. PROGRESS — based on tasks completed
+'''@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_progress(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    from .models import DailyTask, DailyUpdate
+    from datetime import timedelta
+
+    all_tasks = DailyTask.objects.filter(assigned_to=student)
+    total = all_tasks.count()
+    completed = all_tasks.filter(completed=True).count()
+
+    # ─── Streak: consecutive days with a daily update ────────────────────────
+    updates = list(
+        DailyUpdate.objects.filter(student=student)
+        .order_by('-date')
+        .values_list('date', flat=True)
+    )
+    streak = 0
+    check_date = date.today()
+    for update_date in updates:
+        if update_date == check_date:
+            streak += 1
+            check_date -= timedelta(days=1)
+        else:
+            break
+
+    return Response({
+        "total_tasks": total,
+        "completed_tasks": completed,
+        "percentage": round((completed / total * 100), 1) if total > 0 else 0,
+        "streak": streak,
+    })'''
+# In views.py — add this temporary test view
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])  
+def test_auth(request):
+    return Response({"user": str(request.user), "auth": str(request.auth)})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_feedback(request):
+    student = get_student_for_user(request.user)
+    if not student:
+        return Response({"error": "Student not found"}, status=404)
+
+    from .models import MentorRemark
+    remarks = MentorRemark.objects.filter(
+        student=student
+    ).order_by('-created_at')
+
+    from .serializers import MentorRemarkSerializer
+    return Response(MentorRemarkSerializer(remarks, many=True).data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def my_students(request):
+    try:
+        mentor = Mentor.objects.get(user=request.user)
+    except Mentor.DoesNotExist:
+        return Response({"error": "Mentor not found"}, status=404)
+
+    if mentor.role == "college":
+     students = Student.objects.filter(college=mentor.college)
+
+    elif mentor.role == "industry":
+       students = Student.objects.filter(domain=mentor.domain)
+
+    else:
+       students = Student.objects.none()
+
+    data = []
+    for s in students:
+        attendance = Attendance.objects.filter(student=s)
+        total = attendance.count()
+        present = attendance.filter(present=True).count()
+
+        percentage = round((present / total * 100), 1) if total > 0 else 0
+
+        data.append({
+            "id": s.id,
+            "name": s.name,
+            "email": s.email,
+            "roll_no": s.roll_no,
+            "domain": s.domain.name,
+            "attendance": percentage
+        })
+
+    return Response(data)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_dashboard(request):
+    mentor = Mentor.objects.get(user=request.user)
+
+    if mentor.role == "college":
+     students = Student.objects.filter(college=mentor.college)
+
+    elif mentor.role == "industry":
+     students = Student.objects.filter(domain=mentor.domain)
+
+    else:
+      students = Student.objects.none()
+
+    total_students = students.count()
+
+    attendance = Attendance.objects.filter(student__in=students)
+    total = attendance.count()
+    present = attendance.filter(present=True).count()
+
+    avg_attendance = round((present / total * 100), 1) if total > 0 else 0
+
+    remarks = MentorRemark.objects.filter(mentor=mentor).count()
+
+    return Response({
+        "total_students": total_students,
+        "avg_attendance": avg_attendance,
+        "remarks": remarks
+    })
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def add_remark(request):
+    mentor = Mentor.objects.get(user=request.user)
+
+    student_id = request.data.get("student_id")
+    remark_text = request.data.get("remark")
+    rating = request.data.get("rating", 5)
+
+    try:
+        student = Student.objects.get(id=student_id)
+    except Student.DoesNotExist:
+        return Response({"error": "Student not found"}, status=404)
+
+    remark = MentorRemark.objects.create(
+        student=student,
+        mentor=mentor,
+        remark=remark_text,
+        rating=rating
+    )
+
+    return Response({"message": "Remark added"})
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_updates(request):
+    mentor = Mentor.objects.get(user=request.user)
+    if mentor.role == "college":
+     students = Student.objects.filter(college=mentor.college)
+
+    elif mentor.role == "industry":
+     students = Student.objects.filter(domain=mentor.domain)
+
+    else:
+     students = Student.objects.none()
+
+    updates = DailyUpdate.objects.filter(student__in=students).order_by('-date')
+
+    data = []
+    for u in updates:
+        data.append({
+            "id": u.id,
+            "student": u.student.name,
+            "domain": u.student.domain.name,
+            "content": u.content,
+            "date": u.date
+        })
+
+    return Response(data)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def mentor_attendance(request):
+    mentor = Mentor.objects.get(user=request.user)
+    if mentor.role == "college":
+        students = Student.objects.filter(college=mentor.college)
+
+    else:  # industry mentor
+        students = Student.objects.filter(domain=mentor.domain) 
+    data = []
+
+    for s in students:
+        records = Attendance.objects.filter(student=s)
+        total = records.count()
+        present = records.filter(present=True).count()
+
+        percentage = round((present / total * 100), 1) if total > 0 else 0
+
+        data.append({
+            "student": s.name,
+            "attendance": percentage
+        })
+
+    return Response(data)
+class TaskViewSet(ModelViewSet):
+    queryset = DailyTask.objects.all()
+    serializer_class = DailyTaskSerializer
+    permission_classes = [IsAuthenticated]
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_attendance(request):
+    records = Attendance.objects.select_related('student').order_by('-date')
+
+    data = []
+    for r in records:
+        data.append({
+            "student": r.student.name,
+            "email": r.student.email,
+            "date": r.date,
+            "present": r.present
+        })
+
+    return Response(data)
