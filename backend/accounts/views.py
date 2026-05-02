@@ -1,6 +1,6 @@
 
 from os import link
-
+from rest_framework.exceptions import PermissionDenied
 from arrow import now
 from django.contrib.auth import get_user_model
 from openai import models
@@ -13,6 +13,7 @@ from django.db.models import Count
 import uuid
 from django.conf import settings
 from django.core.mail import send_mail
+from streamlit import user
 from .models import Application, Domain, MentorRemark, Student, Course, College, Mentor,User
 from .serializers import (
     UserSerializer,
@@ -201,7 +202,14 @@ Create your account here:
 class CollegeViewSet(ModelViewSet):
     queryset = College.objects.all()
     serializer_class = CollegeSerializer
-    permission_classes = [AllowAny]    
+    permission_classes = [AllowAny]  
+
+    def get_queryset(self):
+        queryset = College.objects.all()
+        sort = self.request.query_params.get('sort')
+        if sort:
+            queryset = queryset.order_by(sort)
+        return queryset
     
 class CourseViewSet(ModelViewSet):
     queryset = Course.objects.all()
@@ -696,30 +704,27 @@ def my_profile(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def my_notifications(request):
-    """
-    For now returns feedback-based notifications.
-    Extend this with a proper Notification model later.
-    """
     student = get_student_for_user(request.user)
     if not student:
         return Response({"error": "Student not found"}, status=404)
 
-    # Placeholder: return recent updates that have mentor remarks
-    # TODO: Replace with a Notification model
-    from .models import DailyUpdate
-    recent_updates = DailyUpdate.objects.filter(student=student).order_by('-date')[:10]
+    remarks = MentorRemark.objects.filter(
+        student=student
+    ).select_related('mentor').order_by('-created_at')
 
     notifications = []
-    for update in recent_updates:
-        # Check if mentor left a remark (add MentorRemark model for this)
-        # This is a scaffold - wire up to actual remark model
-        pass
+    for r in remarks:
+        notifications.append({
+            "id": r.id,
+            "message": f"{r.mentor.name} gave you a {r.rating}⭐ rating — \"{r.remark[:60]}{'...' if len(r.remark) > 60 else ''}\"",
+            "time": r.created_at.strftime("%b %d, %Y · %I:%M %p"),
+            "read": False
+        })
 
     return Response({
         "notifications": notifications,
-        "unread_count": 0
+        "unread_count": len(notifications)
     })
-
 # ─── REPLACE these two views in your accounts/views.py ───────────────────────
 
 from datetime import date
@@ -849,17 +854,24 @@ def test_auth(request):
 @permission_classes([IsAuthenticated])
 def my_feedback(request):
     student = get_student_for_user(request.user)
-    if not student:
-        return Response({"error": "Student not found"}, status=404)
 
-    from .models import MentorRemark
     remarks = MentorRemark.objects.filter(
         student=student
-    ).order_by('-created_at')
+    ).select_related('mentor', 'daily_update').order_by('-created_at')
 
-    from .serializers import MentorRemarkSerializer
-    return Response(MentorRemarkSerializer(remarks, many=True).data)
+    data = []
 
+    for r in remarks:
+        data.append({
+            "id": r.id,
+            "mentor_name": r.mentor.name,
+            "remark": r.remark,
+            "rating": r.rating,
+            "created_at": r.created_at,
+            "update_date": r.daily_update.date if r.daily_update else None
+        })
+
+    return Response(data)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def my_students(request):
@@ -932,15 +944,24 @@ def add_remark(request):
     student_id = request.data.get("student_id")
     remark_text = request.data.get("remark")
     rating = request.data.get("rating", 5)
+    update_id = request.data.get("update_id")  # ✅ NEW
 
     try:
         student = Student.objects.get(id=student_id)
     except Student.DoesNotExist:
         return Response({"error": "Student not found"}, status=404)
 
-    remark = MentorRemark.objects.create(
+    update = None
+    if update_id:
+        try:
+            update = DailyUpdate.objects.get(id=update_id)
+        except DailyUpdate.DoesNotExist:
+            return Response({"error": "Update not found"}, status=404)
+
+    MentorRemark.objects.create(
         student=student,
         mentor=mentor,
+        daily_update=update,   # ✅ LINKED
         remark=remark_text,
         rating=rating
     )
@@ -1001,6 +1022,38 @@ class TaskViewSet(ModelViewSet):
     serializer_class = DailyTaskSerializer
     permission_classes = [IsAuthenticated]
 
+    def get_queryset(self):
+       user = self.request.user
+
+    # ✅ Admin sees all tasks
+       if user.role == "admin":
+          return DailyTask.objects.all()
+
+       if user.role == "mentor":
+        mentor = Mentor.objects.get(user=user)
+        if mentor.role == "industry":
+            return DailyTask.objects.filter(domain=mentor.domain)
+
+       return DailyTask.objects.none()
+
+    def perform_create(self, serializer):
+        user = self.request.user
+
+    # ✅ Admin can create tasks for any domain (domain comes from request data)
+        if user.role == "admin":
+            serializer.save()
+            return
+
+    # Mentor flow stays the same
+        if user.role != "mentor":
+             raise PermissionDenied("Only mentors or admins can create tasks")
+
+        mentor = Mentor.objects.get(user=user)
+        if mentor.role != "industry":
+           raise PermissionDenied("Only industry mentors can assign tasks")
+
+        serializer.save(domain=mentor.domain)
+
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def admin_attendance(request):
@@ -1015,4 +1068,20 @@ def admin_attendance(request):
             "present": r.present
         })
 
+    return Response(data)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def admin_all_updates(request):
+    updates = DailyUpdate.objects.select_related('student').order_by('-date')
+    data = []
+    for u in updates:
+        data.append({
+            "id": u.id,
+            "student": u.student.name,
+            "email": u.student.email,
+            "domain": u.student.domain.name,
+            "content": u.content,
+            "date": u.date
+        })
     return Response(data)

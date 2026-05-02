@@ -158,7 +158,16 @@ class AttendanceSerializer(serializers.ModelSerializer):
 class MentorRemarkSerializer(serializers.ModelSerializer):
     mentor_name = serializers.CharField(source='mentor.name', read_only=True)
     update_date = serializers.DateField(source='daily_update.date', read_only=True)
+    update_content = serializers.CharField(source='daily_update.content', read_only=True)
 
     class Meta:
         model = MentorRemark
-        fields = ['id', 'mentor_name', 'remark', 'rating', 'created_at', 'update_date']
+        fields = [
+            'id',
+            'mentor_name',
+            'remark',
+            'rating',
+            'created_at',
+            'update_date',
+            'update_content'   # 🔥 ADD THIS
+        ]

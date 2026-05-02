@@ -171,7 +171,6 @@ function DailyUpdate({ existingUpdate }: { existingUpdate: DailyUpdateRecord | n
   const [loading, setLoading] = useState(false);
   const max = 2000;
 
-  // If today's update loads after mount, fill the textarea
   useEffect(() => {
     if (existingUpdate?.content) setContent(existingUpdate.content);
   }, [existingUpdate]);
@@ -247,48 +246,97 @@ function DailyUpdate({ existingUpdate }: { existingUpdate: DailyUpdateRecord | n
 
 // ─── Notification Bell ────────────────────────────────────────────────────────
 function NotificationPanel({ notifications }: { notifications: Notification[] }) {
-  const unread = notifications.filter((n) => !n.read).length;
+  // ✅ FIX 1: Track seen IDs in localStorage so badge clears after viewing
+  const [seenIds, setSeenIds] = useState<number[]>(() => {
+    try {
+      const stored = localStorage.getItem("seen_notif_ids");
+      return stored ? JSON.parse(stored) : [];
+    } catch {
+      return [];
+    }
+  });
+
   const [open, setOpen] = useState(false);
 
+  // ✅ FIX 2: Count unread as notifications NOT yet seen
+  const unread = notifications.filter((n) => !seenIds.includes(n.id)).length;
+
+  const handleOpen = () => {
+    const willOpen = !open;
+    if (willOpen) {
+      // ✅ Mark all as seen when bell is opened
+      const allIds = notifications.map((n) => n.id);
+      localStorage.setItem("seen_notif_ids", JSON.stringify(allIds));
+      setSeenIds(allIds);
+    }
+    setOpen(willOpen);
+  };
+
+  // Close panel when clicking outside
+  useEffect(() => {
+    if (!open) return;
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      if (!target.closest("#notif-panel")) setOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    return () => document.removeEventListener("mousedown", handleClick);
+  }, [open]);
+
   return (
-    <div className="relative">
+    <div className="relative" id="notif-panel">
       <button
-        onClick={() => setOpen(!open)}
+        onClick={handleOpen}
         className="relative p-2 rounded-xl hover:bg-gray-100 transition-colors"
       >
         <Bell size={20} className="text-gray-600" />
+        {/* ✅ FIX 3: Number badge instead of plain dot */}
         {unread > 0 && (
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full" />
+          <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] bg-red-500 rounded-full flex items-center justify-center text-white text-[10px] font-bold px-1">
+            {unread > 99 ? "99+" : unread}
+          </span>
         )}
       </button>
+
       {open && (
         <div className="absolute right-0 top-12 w-80 bg-white border border-gray-100 shadow-xl rounded-2xl z-50 overflow-hidden">
-          <div className="px-4 py-3 border-b border-gray-50 flex items-center justify-between">
+          <div className="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
             <span className="font-semibold text-gray-800 text-sm">Notifications</span>
-            {unread > 0 && (
+            {notifications.length > 0 && (
               <span className="text-xs bg-blue-50 text-blue-600 font-semibold px-2 py-0.5 rounded-full">
-                {unread} new
+                {notifications.length} total
               </span>
             )}
           </div>
-          {notifications.length === 0 ? (
-            <p className="text-sm text-gray-400 text-center py-6">No notifications</p>
-          ) : (
-            notifications.map((n) => (
-              <div
-                key={n.id}
-                className={`px-4 py-3 border-b border-gray-50 last:border-0 flex gap-3 items-start ${
-                  !n.read ? "bg-blue-50/40" : ""
-                }`}
-              >
-                <div className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${!n.read ? "bg-blue-500" : "bg-gray-200"}`} />
-                <div>
-                  <p className="text-sm text-gray-700 leading-snug">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-0.5">{n.time}</p>
-                </div>
-              </div>
-            ))
-          )}
+
+          <div className="max-h-80 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <p className="text-sm text-gray-400 text-center py-8">No notifications yet</p>
+            ) : (
+              notifications.map((n) => {
+                const isNew = !seenIds.includes(n.id);
+                return (
+                  <div
+                    key={n.id}
+                    className={`px-4 py-3 border-b border-gray-50 last:border-0 flex gap-3 items-start transition-colors ${
+                      isNew ? "bg-blue-50/50" : "bg-white"
+                    }`}
+                  >
+                    {/* Blue dot for new, gray for seen */}
+                    <div
+                      className={`w-2 h-2 mt-1.5 rounded-full shrink-0 ${
+                        isNew ? "bg-blue-500" : "bg-gray-200"
+                      }`}
+                    />
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm text-gray-700 leading-snug">{n.message}</p>
+                      <p className="text-xs text-gray-400 mt-0.5">{n.time}</p>
+                    </div>
+                  </div>
+                );
+              })
+            )}
+          </div>
         </div>
       )}
     </div>
@@ -321,6 +369,7 @@ function StudentLayout({
   const handleLogout = () => {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    localStorage.removeItem("seen_notif_ids"); // ✅ clear seen on logout
     navigate("/login");
   };
 
@@ -392,17 +441,32 @@ export default function StudentDashboard() {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // ✅ Separated so polling can reuse it without re-fetching everything
+  async function fetchNotifications() {
+    try {
+      const res = await fetch(`${BASE}/my_notifications/`, { headers: authHeaders() });
+      if (res.ok) {
+        const data = await res.json();
+        setNotifications(data.notifications || []);
+      }
+    } catch (e) {
+      console.error("Notification fetch error:", e);
+    }
+  }
+
   useEffect(() => {
     const token = localStorage.getItem("token");
     if (!token) { navigate("/login"); return; }
 
     async function fetchAll() {
       try {
-        const [profileRes, tasksRes, progressRes, updatesRes] = await Promise.all([
+        // ✅ FIX: All 5 fetches properly destructured (was only 4 before)
+        const [profileRes, tasksRes, progressRes, updatesRes, notifRes] = await Promise.all([
           fetch(`${BASE}/student/profile/`, { headers: authHeaders() }),
           fetch(`${BASE}/student/tasks/`, { headers: authHeaders() }),
           fetch(`${BASE}/student/progress/`, { headers: authHeaders() }),
           fetch(`${BASE}/student/daily-updates/`, { headers: authHeaders() }),
+          fetch(`${BASE}/my_notifications/`, { headers: authHeaders() }),  // ✅ was missing
         ]);
 
         if (profileRes.ok) setStudent(await profileRes.json());
@@ -412,9 +476,15 @@ export default function StudentDashboard() {
         if (updatesRes.ok) {
           const updates: DailyUpdateRecord[] = await updatesRes.json();
           const today = new Date().toISOString().split("T")[0];
-          const todayEntry = updates.find((u) => u.date === today) || null;
-          setTodayUpdate(todayEntry);
+          setTodayUpdate(updates.find((u) => u.date === today) || null);
         }
+
+        // ✅ FIX: notifRes now actually exists and is used
+        if (notifRes.ok) {
+          const data = await notifRes.json();
+          setNotifications(data.notifications || []);
+        }
+
       } catch (e) {
         console.error("Fetch error:", e);
       }
@@ -422,10 +492,15 @@ export default function StudentDashboard() {
     }
 
     fetchAll();
+
+    // ✅ Poll every 30 seconds for new remarks from mentor
+    const interval = setInterval(fetchNotifications, 30000);
+
+    // ✅ Cleanup interval on unmount
+    return () => clearInterval(interval);
   }, []);
 
   const handleToggleTask = async (taskId: number) => {
-    // Optimistic UI update
     setTasks((prev) =>
       prev.map((t) => (t.id === taskId ? { ...t, completed: !t.completed } : t))
     );
@@ -434,7 +509,6 @@ export default function StudentDashboard() {
         method: "PATCH",
         headers: authHeaders(),
       });
-      // Refresh progress after toggle
       const res = await fetch(`${BASE}/student/progress/`, { headers: authHeaders() });
       if (res.ok) setProgress(await res.json());
     } catch (e) {
@@ -446,7 +520,7 @@ export default function StudentDashboard() {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
+          <div className="w-8 h-8 border-2 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
           <p className="text-sm text-gray-400">Loading your dashboard...</p>
         </div>
       </div>
@@ -459,7 +533,6 @@ export default function StudentDashboard() {
       studentName={student?.name || "Student"}
       notifications={notifications}
     >
-      {/* Greeting */}
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-gray-900">
           Hi, {student?.name?.split(" ")[0] || "Student"} 👋
@@ -472,13 +545,11 @@ export default function StudentDashboard() {
         </p>
       </div>
 
-      {/* Top row */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
         <ProgressTracker progress={progress} />
         {student && <InternshipSummary student={student} />}
       </div>
 
-      {/* Bottom row */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
         <div className="lg:col-span-2">
           <DailyUpdate existingUpdate={todayUpdate} />

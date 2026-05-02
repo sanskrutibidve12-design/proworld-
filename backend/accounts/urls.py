@@ -12,24 +12,27 @@ router.register(r'courses', CourseViewSet)
 router.register(r'domains', DomainViewSet)
 router.register(r'tasks', TaskViewSet)
 router.register(r'users', UserViewSet)
+#router.register('tasks', TaskViewSet, basename='tasks' )
 
 urlpatterns = [
     # ─── AUTH ─────────────────────────────────────────────────
     path('login/', login_view),
     path('protected/', protected_view),
     path('test-auth/', views.test_auth),
-
+    path('get_colleges/', get_colleges),
     # ─── USERS ────────────────────────────────────────────────
     path('mentor_updates/', mentor_updates),
     path('my_students/', my_students),
     path('mentor_dashboard/', mentor_dashboard),
     path("mentor_attendance/", mentor_attendance),
-
-
+    path('my_students/', my_students),
+    path('add_remark/', add_remark),
+    path('my_feedback/',my_feedback),
+    path('my_notifications/',my_notifications),
     # ─── APPLICATIONS ─────────────────────────────────────────
     path('approve/<int:id>/', approve_application),
     path('create-account/<str:token>/', create_account),
-    
+
 
     # ─── DASHBOARD ────────────────────────────────────────────
     path('dashboard/', dashboard_stats),
@@ -49,7 +52,7 @@ urlpatterns = [
     path('mentor/updates/', mentor_updates),
     path('mentor/attendance/', mentor_attendance),
     path('mentor/add-remark/', add_remark),
-    path('admin/updates/', daily_updates),
+    path('admin/updates/', admin_all_updates),
     path('admin/attendance/', admin_attendance),
     # ─── ROUTER (keep at bottom always) ───────────────────────
     path('', include(router.urls)),

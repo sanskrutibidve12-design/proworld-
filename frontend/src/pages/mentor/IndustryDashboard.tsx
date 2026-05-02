@@ -39,7 +39,7 @@ export default function IndustryDashboard() {
     <MentorLayout>
 
       {/* 🔷 TOP BANNER */}
-      <div className="bg-gradient-to-r from-purple-600 to-indigo-600 text-white rounded-2xl p-6 mb-6">
+      <div className="bg-gradient-to-r from-blue-600 to-indigo-600 text-white rounded-2xl p-6 mb-6">
         <h1 className="text-3xl font-bold">
           {getGreeting()}, {name}
         </h1>

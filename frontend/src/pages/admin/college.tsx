@@ -181,6 +181,49 @@ export default function Colleges() {
           </div>
         </div>
       )}
+
+
+      {/* Edit Modal */}
+      {/* Edit Modal */}
+{editing && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100 flex items-center justify-between">
+        <h3 className="font-bold text-gray-900">Edit College</h3>
+        <button onClick={() => setEditing(null)} className="w-8 h-8 flex items-center justify-center rounded-lg hover:bg-gray-100 text-gray-400 transition-colors">
+          <X size={16} />
+        </button>
+      </div>
+      <div className="p-6 space-y-3">
+        <ModalInput
+          value={editing.name}
+          placeholder="College Name"
+          onChange={(e: any) => setEditing({ ...editing, name: e.target.value })}
+        />
+      </div>
+      <div className="px-6 pb-6 flex gap-3">
+        <button onClick={() => setEditing(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+        <button onClick={handleUpdate} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-blue-200 transition-all">Save</button>
+      </div>
+    </div>
+  </div>
+)}
+
+{/* Delete Confirm Modal */}
+{confirmDelete && (
+  <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex justify-center items-center z-50 p-4">
+    <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+      <div className="px-6 py-5 border-b border-gray-100">
+        <h3 className="font-bold text-gray-900">Delete College</h3>
+        <p className="text-sm text-gray-500 mt-1">Are you sure you want to delete <span className="font-semibold text-gray-700">{confirmDelete.name}</span>?</p>
+      </div>
+      <div className="px-6 pb-6 pt-4 flex gap-3">
+        <button onClick={() => setConfirmDelete(null)} className="flex-1 border border-gray-200 text-gray-600 py-2.5 rounded-xl text-sm font-semibold hover:bg-gray-50 transition-colors">Cancel</button>
+        <button onClick={handleDelete} className="flex-1 bg-red-600 hover:bg-red-700 text-white py-2.5 rounded-xl text-sm font-semibold shadow-md shadow-red-200 transition-all">Delete</button>
+      </div>
+    </div>
+  </div>
+)}
     </AdminLayout>
   );
 }

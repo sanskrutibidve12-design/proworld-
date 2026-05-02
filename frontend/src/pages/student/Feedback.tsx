@@ -128,29 +128,43 @@ export default function FeedbackPage() {
   useEffect(() => {
     async function fetchFeedback() {
       try {
-        const res = await fetch(`${BASE}/student/feedback/`, {
+        const res = await fetch(`${BASE}/my_feedback/`, {   // ✅ FIXED ENDPOINT
           headers: authHeaders(),
         });
-        if (res.ok) {
-          const data = await res.json();
-          setRemarks(data);
+
+        if (!res.ok) {
+          console.error("Failed to fetch feedback");
+          return;
         }
+
+        const data = await res.json();
+
+        // ✅ ensure always array
+        if (Array.isArray(data)) {
+          setRemarks(data);
+        } else {
+          setRemarks([]);
+        }
+
       } catch (e) {
-        console.error(e);
+        console.error("Error fetching feedback:", e);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
+
     fetchFeedback();
   }, []);
 
-  // Average rating
+  // ✅ Average rating
   const avgRating =
     remarks.length > 0
-      ? (remarks.reduce((a, r) => a + r.rating, 0) / remarks.length).toFixed(1)
+      ? (remarks.reduce((a, r) => a + Number(r.rating), 0) / remarks.length).toFixed(1)
       : null;
 
-  // Mentor name from first remark
-  const mentorName = remarks.length > 0 ? remarks[0].mentor_name : null;
+  // ✅ Mentor name (latest remark)
+  const mentorName =
+    remarks.length > 0 ? remarks[0].mentor_name : null;
 
   if (loading) {
     return (
@@ -165,24 +179,32 @@ export default function FeedbackPage() {
   return (
     <StudentLayout activePage="Manager Feedback">
       <div className="max-w-2xl mx-auto space-y-6">
+
         {/* Header */}
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Mentor Feedback</h1>
+            <h1 className="text-2xl font-bold text-gray-900">
+              Mentor Feedback
+            </h1>
             <p className="text-sm text-gray-500 mt-0.5">
               Remarks from your assigned mentor
             </p>
           </div>
+
           {avgRating && (
             <div className="bg-white border border-gray-100 shadow-sm rounded-2xl px-4 py-3 text-center">
-              <p className="text-2xl font-bold text-yellow-500">{avgRating}</p>
+              <p className="text-2xl font-bold text-yellow-500">
+                {avgRating}
+              </p>
               <StarRating rating={Math.round(Number(avgRating))} />
-              <p className="text-xs text-gray-400 mt-1">Avg rating</p>
+              <p className="text-xs text-gray-400 mt-1">
+                Avg rating
+              </p>
             </div>
           )}
         </div>
 
-        {/* Mentor info card */}
+        {/* Mentor card */}
         {mentorName && (
           <div className="bg-gradient-to-br from-blue-600 to-blue-500 text-white rounded-2xl p-4 flex items-center gap-4">
             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center text-lg font-bold">
@@ -195,59 +217,65 @@ export default function FeedbackPage() {
           </div>
         )}
 
-        {/* No feedback yet */}
+        {/* No feedback */}
         {remarks.length === 0 ? (
           <div className="bg-white rounded-2xl border border-gray-100 shadow-sm p-12 text-center">
             <MessageSquare size={32} className="mx-auto mb-3 text-gray-300" />
-            <p className="text-sm font-semibold text-gray-500">No feedback yet</p>
+            <p className="text-sm font-semibold text-gray-500">
+              No feedback yet
+            </p>
             <p className="text-xs text-gray-400 mt-1">
               Your mentor hasn't left any remarks yet
             </p>
           </div>
         ) : (
-          // Feedback timeline
+
+          /* Feedback list */
           <div className="space-y-4">
             {remarks.map((r, i) => (
               <div
                 key={r.id}
                 className="bg-white rounded-2xl border border-gray-100 shadow-sm p-5 relative"
               >
+
                 {i === 0 && (
                   <span className="absolute top-4 right-4 text-[10px] font-semibold bg-blue-50 text-blue-600 px-2 py-0.5 rounded-full">
                     Latest
                   </span>
                 )}
+
                 <div className="flex items-start gap-3">
                   <div className="w-8 h-8 bg-blue-100 rounded-xl flex items-center justify-center shrink-0">
                     <MessageSquare size={15} className="text-blue-600" />
                   </div>
+
                   <div className="flex-1">
+
+                    {/* Rating + Update link */}
                     <div className="flex items-center gap-2 mb-1">
-                      <StarRating rating={r.rating} />
+                      <StarRating rating={Number(r.rating)} />
+
                       {r.update_date && (
                         <>
                           <span className="text-xs text-gray-400">·</span>
                           <span className="text-xs text-gray-400">
                             Re: your update on{" "}
-                            {new Date(r.update_date).toLocaleDateString("en-US", {
-                              month: "short",
-                              day: "numeric",
-                            })}
+                            {new Date(r.update_date).toLocaleDateString()}
                           </span>
                         </>
                       )}
                     </div>
+
+                    {/* Remark */}
                     <p className="text-sm text-gray-700 leading-relaxed">
                       {r.remark}
                     </p>
+
+                    {/* Date */}
                     <p className="text-xs text-gray-400 mt-2">
-                      {new Date(r.created_at).toLocaleDateString("en-US", {
-                        weekday: "short",
-                        month: "short",
-                        day: "numeric",
-                        year: "numeric",
-                      })}
+                      {new Date(r.created_at).toLocaleDateString()}
                     </p>
+
                   </div>
                 </div>
               </div>

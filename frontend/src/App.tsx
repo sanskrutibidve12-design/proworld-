@@ -40,7 +40,8 @@ import IndustryDashboard from "./pages/mentor/IndustryDashboard";
 import MentorStudents from "./pages/mentor/Students";
 import MentorAttendance from "@/pages/mentor/Attendance";
 import MentorUpdates from "@/pages/mentor/Updates";
-
+import IndustryTasks from "@/pages/mentor/Tasks";
+import Remarks from "./pages/mentor/Remarks"; 
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -90,6 +91,8 @@ const App = () => (
 <Route path="/mentor/industry/students" element={<MentorRoute><MentorStudents /></MentorRoute>} />
 <Route path="/mentor/industry/attendance" element={<MentorRoute><MentorAttendance /></MentorRoute>} />
 <Route path="/mentor/industry/updates" element={<MentorRoute><MentorUpdates /></MentorRoute>} />
+<Route path="/mentor/industry/tasks" element={<MentorRoute><IndustryTasks /></MentorRoute>} />
+<Route path="/mentor/industry/remarks"element={<MentorRoute><Remarks/></MentorRoute>}/>
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
