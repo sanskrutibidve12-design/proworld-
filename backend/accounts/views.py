@@ -188,10 +188,24 @@ class MentorViewSet(ModelViewSet):
             message=f"""
 Hello {mentor.name},
 
-You have been added as a mentor.
+Greetings from Proworld Technology.
+
+
+We are pleased to inform you that you have been added as a mentor on our platform. You can create your account using this email address and log in to continue.
+
+
+Once logged in, you will be able to access your dashboard and begin mentoring activities.
+
+
+If you need any assistance during the setup process, please feel free to contact us.
+Thank you for being a part of Proworld Technology. We look forward to your valuable contribution.
+
+Best regards,
+Proworld Technology Team
 
 Create your account here:
 {link}
+
 """,
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[mentor.email],
@@ -311,9 +325,18 @@ def approve_application(request, id):
         send_mail(
             subject="Application Approved 🎉",
             message=f"""
-Hello {app.name},
+Dear {app.name},
 
-Your application is approved!
+Greetings from Proworld Technology.
+We are pleased to inform you that your application has been successfully accepted.
+
+You can now create your account and log in to access our platform and begin your journey with us.
+
+If you have any questions or require assistance during the process, feel free to reach out to us.
+
+Thank you for joining Proworld Technology. We look forward to having you on board.
+Best regards,
+Proworld Technology Team
 
 Create your account here:
 {link}

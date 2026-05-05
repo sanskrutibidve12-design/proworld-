@@ -47,7 +47,7 @@ export default function Signup() {
 
       toast({
         title: "Account Created!",
-        description: "You can now sign in."
+        description: "You can now log in."
       });
 
       // ✅ redirect to login after success
