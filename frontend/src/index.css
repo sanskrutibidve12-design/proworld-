@@ -5,54 +5,41 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap');
 
 @layer base {
-  :root {
-    --background: 0 0% 100%;
-    --foreground: 215 25% 15%;
+    :root {
+  --background: 220 40% 97%; /* soft light blue */
+  --foreground: 220 50% 15%; /* dark navy text */
 
-    --card: 210 40% 98%;
-    --card-foreground: 215 25% 15%;
+  --card: 0 0% 100%;
+  --card-foreground: 220 50% 15%;
 
-    --popover: 0 0% 100%;
-    --popover-foreground: 215 25% 15%;
+  --primary: 220 60% 18%; /* 🔥 NAVY */
+  --primary-foreground: 0 0% 100%;
 
-    --primary: 217 91% 50%;
-    --primary-foreground: 0 0% 100%;
+  --secondary: 220 30% 92%;
+  --secondary-foreground: 220 50% 15%;
 
-    --secondary: 210 40% 96%;
-    --secondary-foreground: 215 25% 15%;
+  --muted: 220 30% 92%;
+  --muted-foreground: 220 20% 45%;
 
-    --muted: 210 40% 96%;
-    --muted-foreground: 215 16% 47%;
+  --accent: 220 70% 45%; /* blue highlight */
+  --accent-foreground: 0 0% 100%;
 
-    --accent: 217 91% 60%;
-    --accent-foreground: 0 0% 100%;
+  --border: 220 25% 88%;
+  --input: 220 25% 88%;
+  --ring: 220 70% 45%;
 
-    --destructive: 0 84% 60%;
-    --destructive-foreground: 0 0% 100%;
+  --hero-overlay: 220 60% 10%;
 
-    --border: 214 32% 91%;
-    --input: 214 32% 91%;
-    --ring: 217 91% 50%;
+  /* 🔥 IMPORTANT */
+  --glass-bg: 0 0% 100%;
+  --glass-border: 220 25% 85%;
 
-    --radius: 0.75rem;
+  /* 🔥 YOUR FINAL GRADIENT */
+  --gradient-start: 220 60% 18%;  /* navy */
+  --gradient-end: 220 80% 50%;    /* blue */
 
-    --hero-overlay: 215 50% 10%;
-    --glass-bg: 217 91% 97%;
-    --glass-border: 217 91% 90%;
-    --gradient-start: 217 91% 50%;
-    --gradient-end: 217 91% 65%;
-    --section-alt: 210 40% 98%;
-
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217 91% 60%;
-  }
-
+  --section-alt: 220 40% 96%;
+}
   .dark {
     --background: 215 25% 8%;
     --foreground: 210 40% 98%;

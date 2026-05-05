@@ -5,18 +5,36 @@ import {
 } from "lucide-react";
 
 const services = [
-  { icon: Search, title: "SEO", desc: "Boost your online visibility with data-driven search engine optimization strategies." },
-  { icon: Code, title: "Web Development", desc: "Custom web applications built with modern frameworks and best practices." },
-  { icon: Palette, title: "Graphic Design", desc: "Stunning visual designs that communicate your brand's message effectively." },
-  { icon: Layout, title: "UI/UX Design", desc: "User-centered design that creates intuitive and engaging digital experiences." },
-  { icon: Smartphone, title: "App Development", desc: "Native and cross-platform mobile apps for iOS and Android." },
-  { icon: Megaphone, title: "Digital Marketing", desc: "Comprehensive digital marketing strategies to grow your online presence." },
-  { icon: Rocket, title: "Build & Launch", desc: "End-to-end product development from ideation to successful market launch." },
-  { icon: Monitor, title: "Responsive Design", desc: "Websites that look and perform perfectly across all devices and screen sizes." },
-  { icon: Settings, title: "Customized Solutions", desc: "Tailored technology solutions designed to meet your unique business needs." },
-  { icon: Headphones, title: "IT Support", desc: "24/7 technical support and maintenance to keep your systems running smoothly." },
-  { icon: HardDrive, title: "Hardware Solutions", desc: "Comprehensive hardware consulting, procurement, and setup services." },
-  { icon: PenTool, title: "Content Designing", desc: "Engaging content creation that tells your story and connects with your audience." },
+  {
+    icon: Search,
+    title: "SEO",
+    desc: "In this digital era, having a website is not enough. SEO helps you reach your target customers effectively. We provide the best SEO services to bring your business to the first page of search results.",
+  },
+  {
+    icon: Code,
+    title: "Web Development",
+    desc: "We provide powerful web development solutions to take your business to the next level. Build fast, scalable, and modern web applications to accelerate your growth.",
+  },
+  {
+    icon: Palette,
+    title: "Graphic Design",
+    desc: "Anything without a good design feels incomplete. Our expert designers turn your ideas into visually stunning and impactful designs.",
+  },
+  {
+    icon: Layout,
+    title: "UI/UX Design",
+    desc: "A great user experience is key to success. We design clean, responsive, and user-friendly interfaces that enhance engagement and usability.",
+  },
+  {
+    icon: Smartphone,
+    title: "App Development",
+    desc: "Step into the mobile world with powerful app solutions. We build high-quality mobile applications to make your services accessible to a wider audience.",
+  },
+  {
+    icon: Megaphone,
+    title: "Digital Marketing",
+    desc: "Reaching your customers is more important than just building a product. We provide effective digital marketing strategies to grow your brand and increase visibility.",
+  },
 ];
 
 export default function Services() {

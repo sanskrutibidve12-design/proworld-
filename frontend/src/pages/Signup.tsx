@@ -68,10 +68,17 @@ export default function Signup() {
     <div className="min-h-screen flex items-center justify-center gradient-primary p-4">
       <div className="bg-background rounded-2xl shadow-hero w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <img src={logo} alt="ProWorld" className="h-16 w-auto mx-auto mb-4" />
-          <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-          <p className="text-muted-foreground text-sm">Join ProWorld Technology</p>
-        </div>
+  <Link to="/">
+    <img
+      src={logo}
+      alt="ProWorld"
+      className="h-16 w-auto mx-auto mb-4 cursor-pointer hover:scale-105 transition"
+    />
+  </Link>
+
+  <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
+  <p className="text-muted-foreground text-sm">Join ProWorld Technology</p>
+</div>
 
         <form onSubmit={handleSubmit} className="space-y-4">
           <div>

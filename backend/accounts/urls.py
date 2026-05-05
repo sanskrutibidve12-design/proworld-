@@ -2,7 +2,7 @@ from accounts import views
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 from .views import *
-
+from .views import forgot_password, reset_password
 router = DefaultRouter()
 router.register(r'applications', ApplicationViewSet)
 router.register(r'students', StudentViewSet)
@@ -53,4 +53,7 @@ urlpatterns = [
     path('admin/attendance/', admin_attendance),
     # ─── ROUTER (keep at bottom always) ───────────────────────
     path('', include(router.urls)),
+    
+    path('forgot-password/', forgot_password),
+    path('reset-password/<str:token>/', reset_password),
 ]

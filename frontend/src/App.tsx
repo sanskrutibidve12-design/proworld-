@@ -40,6 +40,8 @@ import IndustryDashboard from "./pages/mentor/IndustryDashboard";
 import MentorStudents from "./pages/mentor/Students";
 import MentorAttendance from "@/pages/mentor/Attendance";
 import MentorUpdates from "@/pages/mentor/Updates";
+import ForgotPassword from "./pages/ForgotPassword";
+import ResetPassword from "./pages/ResetPassword";
 
 const queryClient = new QueryClient();
 
@@ -51,6 +53,8 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/login" element={<Login />} />
+          <Route path="/forgot-password" element={<ForgotPassword />} />
+          <Route path="/reset-password/:token" element={<ResetPassword />} />
           <Route path="/signup" element={<Signup />} />
           <Route path="/" element={<Layout><Index /></Layout>} />
           <Route path="/about" element={<Layout><About /></Layout>} />

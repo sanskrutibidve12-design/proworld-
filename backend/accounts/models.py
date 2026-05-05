@@ -31,6 +31,9 @@ class User(AbstractUser):
     )
 
     role = models.CharField(max_length=10, choices=ROLE_CHOICES)
+    
+    reset_token = models.CharField(max_length=255, null=True, blank=True)
+    token_created_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
         return self.username

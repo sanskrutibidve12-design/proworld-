@@ -1,6 +1,7 @@
 
 from os import link
-
+from django.utils import timezone
+from datetime import timedelta
 from arrow import now
 from django.contrib.auth import get_user_model
 from openai import models
@@ -1016,3 +1017,63 @@ def admin_attendance(request):
         })
 
     return Response(data)
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def forgot_password(request):
+    email = request.data.get("email")
+
+    try:
+        user = User.objects.get(email=email)
+    except User.DoesNotExist:
+        return Response({"error": "User not found"}, status=404)
+
+    # 🔐 Generate token
+    token = str(uuid.uuid4())
+    user.reset_token = token
+    user.token_created_at = timezone.now()
+    user.save()
+
+    # 🔗 Frontend reset link
+    reset_link = f"http://localhost:8080/reset-password/{token}"
+
+    send_mail(
+        subject="Reset Your Password 🔐",
+        message=f"""
+Hello,
+
+Click below to reset your password:
+{reset_link}
+
+This link will expire in 10 minutes.
+""",
+        from_email=settings.EMAIL_HOST_USER,
+        recipient_list=[email],
+    )
+
+    return Response({"message": "Email sent"})
+
+@api_view(['POST'])
+@permission_classes([AllowAny])
+def reset_password(request, token):
+    password = request.data.get("password")
+
+    try:
+        user = User.objects.get(reset_token=token)
+    except User.DoesNotExist:
+        return Response({"error": "Invalid token"}, status=400)
+
+    from django.utils import timezone
+    from datetime import timedelta
+
+    # ⏱ Token expiry (10 minutes)
+    if user.token_created_at < timezone.now() - timedelta(minutes=10):
+        return Response({"error": "Token expired"}, status=400)
+
+    # ✅ Set new password
+    user.set_password(password)
+    user.reset_token = None
+    user.token_created_at = None
+    user.save()
+
+    return Response({"message": "Password reset successful"})
