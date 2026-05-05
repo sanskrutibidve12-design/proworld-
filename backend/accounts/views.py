@@ -182,8 +182,7 @@ class MentorViewSet(ModelViewSet):
         mentor.save()
 
         # 🔗 link
-        link = f"http://localhost:8080/create-account/{token}"
-
+        link = f"{settings.FRONTEND_URL}/create-account/{token}"
         # 📧 send email
         send_mail(
             subject="Create Your Mentor Account",
@@ -321,7 +320,7 @@ def approve_application(request, id):
         app.save()
 
         # activation link
-        link = f"http://localhost:8080/create-account/{token}"
+        link = f"{settings.FRONTEND_URL}/create-account/{token}"
 
         # send email
         send_mail(
