@@ -53,7 +53,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'corsheaders.middleware.CorsMiddleware',
-     'whitenoise.middleware.WhiteNoiseMiddleware',
+     'whitenoise.middleware.WhiteNoiseMiddleware', 
 ]
 
 ROOT_URLCONF = 'backend.urls'
@@ -145,3 +145,5 @@ EMAIL_USE_TLS = True
 
 EMAIL_HOST_USER = 'proworldtechno@gmail.com'
 EMAIL_HOST_PASSWORD = 'zlaerqbuoiibgmey'
+
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:5173")
