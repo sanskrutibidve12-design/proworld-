@@ -29,7 +29,7 @@ export default function Signup() {
     }
 
     try {
-      const res = await fetch(`http://127.0.0.1:8000/api/create-account/${token}/`, {
+      const res = await fetch(`https://proworld-tech.onrender.com/api/create-account/${token}/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json"

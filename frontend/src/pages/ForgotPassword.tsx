@@ -11,7 +11,7 @@ export default function ForgotPassword() {
   const navigate = useNavigate();
 
   const handleSubmit = async () => {
-    await fetch("http://127.0.0.1:8000/api/forgot-password/", {
+    await fetch("https://proworld-tech.onrender.com/api/forgot-password/", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ email }),

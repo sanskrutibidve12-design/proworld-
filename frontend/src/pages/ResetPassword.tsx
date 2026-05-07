@@ -14,7 +14,7 @@ export default function ResetPassword() {
 
   const handleReset = async () => {
     const res = await fetch(
-      `http://127.0.0.1:8000/api/reset-password/${token}/`,
+      `https://proworld-tech.onrender.com/api/reset-password/${token}/`,
       {
         method: "POST",
         headers: { "Content-Type": "application/json" },

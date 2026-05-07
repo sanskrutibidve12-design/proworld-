@@ -1117,7 +1117,7 @@ def forgot_password(request):
     user.save()
 
     # 🔗 Frontend reset link
-    reset_link = f"http://localhost:8080/reset-password/{token}"
+    reset_link = f"https://proworld-tech.onrender.com/reset-password/{token}"
 
     send_mail(
         subject="Reset Your Password 🔐",
