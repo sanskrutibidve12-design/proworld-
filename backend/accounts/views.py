@@ -15,7 +15,6 @@ from django.db.models import Count
 import uuid
 from django.conf import settings
 from django.core.mail import send_mail
-from streamlit import user
 from .models import Application, Domain, MentorRemark, Student, Course, College, Mentor,User
 from .serializers import (
     UserSerializer,
