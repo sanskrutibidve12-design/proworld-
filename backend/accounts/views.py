@@ -308,36 +308,21 @@ import threading
 
 def send_approval_email(app, link):
     try:
-        send_mail(
+        print("Starting email send...")
+
+        result = send_mail(
             subject="Application Approved 🎉",
-            message=f"""
-Dear {app.name},
-
-Greetings from Proworld Technology.
-
-We are pleased to inform you that your application has been successfully accepted.
-
-You can now create your account and log in to access our platform and begin your journey with us.
-
-If you have any questions or require assistance during the process, feel free to reach out to us.
-
-Thank you for joining Proworld Technology. We look forward to having you on board.
-
-Best regards,
-Proworld Technology Team
-
-Create your account here:
-{link}
-""",
+            message=f"Create account here: {link}",
             from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[app.email],
             fail_silently=False,
         )
-        print("Email sent successfully")
+
+        print("SEND RESULT:", result)
+        print("Email function completed")
 
     except Exception as e:
-        print("EMAIL ERROR:", e)
-
+        print("EMAIL ERROR:", str(e))
 
 @api_view(['POST'])
 def approve_application(request, id):
