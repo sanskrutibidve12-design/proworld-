@@ -365,7 +365,7 @@ def approve_application(request, id):
         threading.Thread(
             target=send_approval_email,
             args=(app, link),
-            daemon=True
+           # daemon=True
         ).start()
 
         return Response(
