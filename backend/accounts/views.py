@@ -321,8 +321,9 @@ def approve_application(request, id):
         # activation link
         link = f"{settings.FRONTEND_URL}/create-account/{token}"
 
-        # send email
-        send_mail(
+        
+        try:
+           send_mail(
             subject="Application Approved 🎉",
             message=f"""
 Dear {app.name},
@@ -344,6 +345,8 @@ Create your account here:
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[app.email],
         )
+        except Exception as e :
+            print(f"Error occurred: {e}")
 
         return Response({"message": "Approved + Email sent"})
 
