@@ -209,7 +209,7 @@ Create your account here:
 """,
             from_email=settings.EMAIL_HOST_USER,
             recipient_list=[mentor.email],
-            
+            fail_silently=False,
         )
     
 
@@ -303,14 +303,54 @@ def dashboard_stats(request):
         "courses": list(courses)
     })      
 #approve logic
+import threading
+
+
+def send_approval_email(app, link):
+    try:
+        send_mail(
+            subject="Application Approved 🎉",
+            message=f"""
+Dear {app.name},
+
+Greetings from Proworld Technology.
+
+We are pleased to inform you that your application has been successfully accepted.
+
+You can now create your account and log in to access our platform and begin your journey with us.
+
+If you have any questions or require assistance during the process, feel free to reach out to us.
+
+Thank you for joining Proworld Technology. We look forward to having you on board.
+
+Best regards,
+Proworld Technology Team
+
+Create your account here:
+{link}
+""",
+            from_email=settings.EMAIL_HOST_USER,
+            recipient_list=[app.email],
+            fail_silently=False,
+        )
+        print("Email sent successfully")
+
+    except Exception as e:
+        print("EMAIL ERROR:", e)
+
+
 @api_view(['POST'])
 def approve_application(request, id):
     try:
         app = Application.objects.get(id=id)
 
         if app.status == "approved":
-            return Response({"message": "Already approved"})
+            return Response(
+                {"message": "Already approved"},
+                status=200
+            )
 
+        # approve application
         app.status = "approved"
 
         # generate token
@@ -321,38 +361,30 @@ def approve_application(request, id):
         # activation link
         link = f"{settings.FRONTEND_URL}/create-account/{token}"
 
-        
-        try:
-           send_mail(
-            subject="Application Approved 🎉",
-            message=f"""
-Dear {app.name},
+        # send email in background thread
+        threading.Thread(
+            target=send_approval_email,
+            args=(app, link),
+            daemon=True
+        ).start()
 
-Greetings from Proworld Technology.
-We are pleased to inform you that your application has been successfully accepted.
-
-You can now create your account and log in to access our platform and begin your journey with us.
-
-If you have any questions or require assistance during the process, feel free to reach out to us.
-
-Thank you for joining Proworld Technology. We look forward to having you on board.
-Best regards,
-Proworld Technology Team
-
-Create your account here:
-{link}
-""",
-            from_email=settings.EMAIL_HOST_USER,
-            recipient_list=[app.email],
+        return Response(
+            {"message": "Approved successfully. Email sending in background."},
+            status=200
         )
-        except Exception as e :
-            print(f"Error occurred: {e}")
-
-        return Response({"message": "Approved + Email sent"})
 
     except Application.DoesNotExist:
-        return Response({"error": "Not found"}, status=404)
-    
+        return Response(
+            {"error": "Application not found"},
+            status=404
+        )
+
+    except Exception as e:
+        print("APPROVE ERROR:", e)
+        return Response(
+            {"error": str(e)},
+            status=500
+        )
 #create account logic
 @api_view(['POST'])
 @permission_classes([AllowAny])
