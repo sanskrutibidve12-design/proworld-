@@ -329,7 +329,7 @@ Proworld Technology Team
 Create your account here:
 {link}
 """,
-            from_email=settings.EMAIL_HOST_USER,
+            from_email=settings.DEFAULT_FROM_EMAIL,
             recipient_list=[app.email],
             fail_silently=False,
         )
