@@ -330,42 +330,32 @@ def approve_application(request, id):
         app = Application.objects.get(id=id)
 
         if app.status == "approved":
-            return Response(
-                {"message": "Already approved"},
-                status=200
-            )
+            return Response({"message": "Already approved"})
 
-        # approve application
         app.status = "approved"
-
-        # generate token
         token = str(uuid.uuid4())
         app.token = token
         app.save()
 
-        # activation link
         link = f"{settings.FRONTEND_URL}/create-account/{token}"
 
-        # send email in background thread
-        send_approval_email(app, link)
+        try:
+            send_mail(
+                subject="Application Approved 🎉",
+                message=f"Create account here: {link}",
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[app.email],
+                fail_silently=False,
+            )
+            print("EMAIL SENT SUCCESS")
 
-        return Response(
-            {"message": "Approved successfully. Email sending in background."},
-            status=200
-        )
+        except Exception as e:
+            print("EMAIL ERROR:", e)
+
+        return Response({"message": "Approved successfully"})
 
     except Application.DoesNotExist:
-        return Response(
-            {"error": "Application not found"},
-            status=404
-        )
-
-    except Exception as e:
-        print("APPROVE ERROR:", e)
-        return Response(
-            {"error": str(e)},
-            status=500
-        )
+        return Response({"error": "Not found"}, status=404)
 #create account logic
 @api_view(['POST'])
 @permission_classes([AllowAny])
