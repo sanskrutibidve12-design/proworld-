@@ -362,11 +362,7 @@ def approve_application(request, id):
         link = f"{settings.FRONTEND_URL}/create-account/{token}"
 
         # send email in background thread
-        threading.Thread(
-            target=send_approval_email,
-            args=(app, link),
-           # daemon=True
-        ).start()
+        send_approval_email(app, link)
 
         return Response(
             {"message": "Approved successfully. Email sending in background."},
