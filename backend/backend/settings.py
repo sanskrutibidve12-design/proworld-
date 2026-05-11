@@ -150,5 +150,5 @@ EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = "Proworld Technology <proworldtechnology@gmail.com>"
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
-
+BREVO_API_KEY = os.getenv("BREVO_API_KEY")
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://proworld-ivory.vercel.app")
