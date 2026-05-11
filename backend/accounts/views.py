@@ -32,25 +32,55 @@ import threading
 import logging
 logger = logging.getLogger(__name__)
 
-def send_async(subject, message, recipient, from_email=None, html=None):
-    """Fire-and-forget email — never blocks the request thread."""
-    from_email = from_email or settings.DEFAULT_FROM_EMAIL
+import requests
+import threading
+import logging
+from django.conf import settings
+
+logger = logging.getLogger(__name__)
+
+
+def send_async(subject, message, recipient):
+    """Send email using Brevo API asynchronously"""
+
     def _send():
         try:
-            logger.info(f"Trying email to {recipient}")
-            send_mail(
-                subject=subject,
-                message=message,
-                from_email=from_email,
-                recipient_list=[recipient],
-                html_message=html,
-                fail_silently=False,
+            url = "https://api.brevo.com/v3/smtp/email"
+
+            headers = {
+                "accept": "application/json",
+                "api-key": settings.BREVO_API_KEY,
+                "content-type": "application/json"
+            }
+
+            payload = {
+                "sender": {
+                    "name": "Proworld Technology",
+                    "email": "proworldtechno@gmail.com"
+                },
+                "to": [
+                    {
+                        "email": recipient
+                    }
+                ],
+                "subject": subject,
+                "textContent": message
+            }
+
+            response = requests.post(
+                url,
+                json=payload,
+                headers=headers,
+                timeout=30
             )
-            logger.info(f"[EMAIL OK] → {recipient}")
+
+            logger.info(f"[BREVO STATUS] {response.status_code}")
+            logger.info(f"[BREVO RESPONSE] {response.text}")
+
         except Exception as e:
-            logger.error(f"[EMAIL FAIL] → {recipient} | {e}", exc_info=True)
-    t = threading.Thread(target=_send)
-    t.start()
+            logger.error(f"[EMAIL FAIL] {e}", exc_info=True)
+
+    threading.Thread(target=_send, daemon=True).start()
     logger.info(f"[EMAIL QUEUED] → {recipient}")
 
 # 🔐 LOGIN
