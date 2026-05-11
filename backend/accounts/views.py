@@ -37,6 +37,7 @@ def send_async(subject, message, recipient, from_email=None, html=None):
     from_email = from_email or settings.DEFAULT_FROM_EMAIL
     def _send():
         try:
+            logger.info(f"Trying email to {recipient}")
             send_mail(
                 subject=subject,
                 message=message,
@@ -48,7 +49,7 @@ def send_async(subject, message, recipient, from_email=None, html=None):
             logger.info(f"[EMAIL OK] → {recipient}")
         except Exception as e:
             logger.error(f"[EMAIL FAIL] → {recipient} | {e}", exc_info=True)
-    t = threading.Thread(target=_send, daemon=True)
+    t = threading.Thread(target=_send)
     t.start()
     logger.info(f"[EMAIL QUEUED] → {recipient}")
 
