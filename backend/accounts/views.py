@@ -1,5 +1,6 @@
 
 from os import link
+import token
 from django.utils import timezone
 from datetime import timedelta
 from rest_framework.exceptions import PermissionDenied
@@ -27,6 +28,29 @@ from .serializers import (
 )
 
 User = get_user_model()
+import threading
+import logging
+logger = logging.getLogger(__name__)
+
+def send_async(subject, message, recipient, from_email=None, html=None):
+    """Fire-and-forget email — never blocks the request thread."""
+    from_email = from_email or settings.DEFAULT_FROM_EMAIL
+    def _send():
+        try:
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=from_email,
+                recipient_list=[recipient],
+                html_message=html,
+                fail_silently=False,
+            )
+            logger.info(f"[EMAIL OK] → {recipient}")
+        except Exception as e:
+            logger.error(f"[EMAIL FAIL] → {recipient} | {e}", exc_info=True)
+    t = threading.Thread(target=_send, daemon=True)
+    t.start()
+    logger.info(f"[EMAIL QUEUED] → {recipient}")
 
 # 🔐 LOGIN
 @api_view(['POST'])
@@ -172,21 +196,17 @@ class MentorViewSet(ModelViewSet):
     # then delete mentor
      instance.delete()
     def perform_create(self, serializer):
-        mentor = serializer.save()
-        print("mentor created", mentor.email)
+      mentor = serializer.save()
+      token = str(uuid.uuid4())
+      mentor.token = token
+      mentor.save()
 
-        # 🔥 generate token
-        token = str(uuid.uuid4())
-        mentor.token = token
-        mentor.save()
+      link = f"{settings.FRONTEND_URL}/create-account/{token}"
 
-        # 🔗 link
-        link = f"{settings.FRONTEND_URL}/create-account/{token}"
-        # 📧 send email
-        send_mail(
-            subject="Create Your Mentor Account",
-            message=f"""
-Hello {mentor.name},
+    # ✅ Non-blocking
+      send_async(
+        subject="Create Your Mentor Account",
+        message=f"""Hello {mentor.name},
 
 Greetings from Proworld Technology.
 
@@ -207,9 +227,7 @@ Create your account here:
 {link}
 
 """,
-            from_email=settings.EMAIL_HOST_USER,
-            recipient_list=[mentor.email],
-            fail_silently=False,
+           recipient=mentor.email,
         )
     
 
@@ -306,57 +324,31 @@ def dashboard_stats(request):
 import threading
 
 
-def send_approval_email(app, link):
-    try:
-        print("Starting email send...")
-
-        result = send_mail(
-            subject="Application Approved 🎉",
-            message=f"Create account here: {link}",
-            from_email=settings.DEFAULT_FROM_EMAIL,
-            recipient_list=[app.email],
-            fail_silently=False,
-        )
-
-        print("SEND RESULT:", result)
-        print("Email function completed")
-
-    except Exception as e:
-        print("EMAIL ERROR:", str(e))
-
 @api_view(['POST'])
 def approve_application(request, id):
     try:
         app = Application.objects.get(id=id)
-
-        if app.status == "approved":
-            return Response({"message": "Already approved"})
-
-        app.status = "approved"
-        token = str(uuid.uuid4())
-        app.token = token
-        app.save()
-
-        link = f"{settings.FRONTEND_URL}/create-account/{token}"
-
-        try:
-            send_mail(
-                subject="Application Approved 🎉",
-                message=f"Create account here: {link}",
-                from_email=settings.DEFAULT_FROM_EMAIL,
-                recipient_list=[app.email],
-                fail_silently=False,
-            )
-            print("EMAIL SENT SUCCESS")
-
-        except Exception as e:
-            print("EMAIL ERROR:", e)
-
-        return Response({"message": "Approved successfully"})
-
     except Application.DoesNotExist:
         return Response({"error": "Not found"}, status=404)
-#create account logic
+
+    if app.status == "approved":
+        return Response({"message": "Already approved"})
+
+    app.status = "approved"
+    token = str(uuid.uuid4())
+    app.token = token
+    app.save()
+
+    link = f"{settings.FRONTEND_URL}/create-account/{token}"
+
+    # ✅ Non-blocking — response returns immediately
+    send_async(
+        subject="Application Approved 🎉",
+        message=f"Congratulations! Create your account here: {link}",
+        recipient=app.email,
+    )
+
+    return Response({"message": "Approved successfully"})
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def create_account(request, token):
@@ -1104,7 +1096,6 @@ def admin_attendance(request):
         })
 
     return Response(data)
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def forgot_password(request):
@@ -1115,31 +1106,21 @@ def forgot_password(request):
     except User.DoesNotExist:
         return Response({"error": "User not found"}, status=404)
 
-    # 🔐 Generate token
     token = str(uuid.uuid4())
     user.reset_token = token
     user.token_created_at = timezone.now()
     user.save()
 
-    # 🔗 Frontend reset link
-    reset_link = f"https://proworld-tech.onrender.com/reset-password/{token}"
+    reset_link = f"{settings.FRONTEND_URL}/reset-password/{token}"
 
-    send_mail(
+    # ✅ Non-blocking
+    send_async(
         subject="Reset Your Password 🔐",
-        message=f"""
-Hello,
-
-Click below to reset your password:
-{reset_link}
-
-This link will expire in 10 minutes.
-""",
-        from_email=settings.EMAIL_HOST_USER,
-        recipient_list=[email],
+        message=f"Hello,\n\nClick below to reset your password:\n{reset_link}\n\nThis link expires in 10 minutes.",
+        recipient=email,
     )
 
     return Response({"message": "Email sent"})
-
 @api_view(['POST'])
 @permission_classes([AllowAny])
 def reset_password(request, token):
