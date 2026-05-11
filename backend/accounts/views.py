@@ -395,8 +395,10 @@ def create_account(request, token):
             return Response({"error": "Application not approved"}, status=400)
 
         # already registered?
-        if Student.objects.filter(email=app.email).exists():
-            return Response({"error": "Account already exists"}, status=400)
+        existing_student = Student.objects.filter(email=app.email).first()
+
+        if existing_student and existing_student.user:
+             return Response({"error": "Account already exists"}, status=400)
 
         # ✅ create user
         user = User.objects.create(
@@ -408,17 +410,10 @@ def create_account(request, token):
         user.save()
 
         # ✅ create student NOW
-        Student.objects.create(
-            user=user,
-            name=app.name,
-            email=app.email,
-            roll_no=app.roll_no,
-            mobile_no=app.mobile_no,
-            college=app.college,
-            course=app.course,
-            domain=app.domain,
-            is_registered=True
-        )
+        student = Student.objects.get(email=app.email)
+        student.user = user
+        student.is_registered = True
+        student.save()
 
         return Response({"message": "Student account created"})
 
