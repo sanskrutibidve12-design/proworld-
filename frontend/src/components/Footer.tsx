@@ -5,7 +5,7 @@ import logo from "@/assets/proworld-logo.png";
 export default function Footer() {
   return (
     <footer className="bg-foreground text-primary-foreground">
-      <div className="container mx-auto px-4 py-16">
+      <div className="responsive-container py-16">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-10">
 
           {/* 🔥 Logo + About */}

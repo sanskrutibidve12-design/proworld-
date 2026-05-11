@@ -25,11 +25,11 @@ export default function Navbar() {
   return (
     <>
       <nav className="fixed top-0 left-0 right-0 z-50 bg-background/80 backdrop-blur-lg border-b border-border/50">
-        <div className="container mx-auto flex items-center justify-between h-16 px-4">
+        <div className="responsive-container flex items-center justify-between h-16">
 
           {/* 🔥 LOGO + NAME */}
           <Link to="/" className="flex items-center gap-3">
-            <img src={logo} alt="ProWorld Technology" className="h-12 w-auto" />
+            <img src={logo} alt="ProWorld Technology" className="h-10 md:h-12 w-auto" />
            <span className="text-2xl font-extrabold text-blue-900 tracking-wide cursor-pointer transition duration-300 hover:scale-110 hover:[text-shadow:0_0_10px_rgba(30,64,175,0.7)]">
   ProWorld
 </span>
@@ -88,8 +88,8 @@ export default function Navbar() {
 
         {/* 🔥 MOBILE DROPDOWN */}
         {mobileOpen && (
-          <div className="md:hidden bg-background border-b border-border animate-fade-in">
-            <div className="container mx-auto px-4 py-4 flex flex-col gap-2">
+            <div className="md:hidden bg-background border-b border-border animate-fade-in">
+            <div className="responsive-container px-0 py-4 flex flex-col gap-2">
               {navLinks.map((link) => (
                 <Link
                   key={link.path}

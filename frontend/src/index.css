@@ -84,6 +84,11 @@
   html {
     scroll-behavior: smooth;
   }
+
+  img {
+    max-width: 100%;
+    height: auto;
+  }
 }
 
 @layer components {
@@ -108,6 +113,10 @@
 
   .hover-lift {
     @apply transition-all duration-300 hover:-translate-y-1 hover:shadow-lg;
+  }
+
+  .responsive-container {
+    @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
 
   .animate-fade-up {
