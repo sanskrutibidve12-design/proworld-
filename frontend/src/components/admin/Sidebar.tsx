@@ -38,7 +38,7 @@ export default function Sidebar() {
   };
 
   return (
-    <div className="w-64 h-screen bg-[#0a0f1e] text-white fixed flex flex-col border-r border-white/5 shadow-2xl">
+    <div className="hidden md:flex md:w-64 md:h-screen md:fixed bg-[#0a0f1e] text-white flex-col border-r border-white/5 shadow-2xl">
       {/* Logo */}
       <div className="px-6 py-5 flex items-center gap-3 border-b border-white/5">
         <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center shadow-lg">

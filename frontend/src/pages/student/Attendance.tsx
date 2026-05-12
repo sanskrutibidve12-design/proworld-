@@ -1,8 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import { ChevronRight } from "lucide-react";
+import { ChevronRight, Menu } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-const BASE = "http://127.0.0.1:8000/api";
+const BASE = "https://proworld-tech.onrender.com/api";
 
 function authHeaders() {
   const token = localStorage.getItem("token");
@@ -162,10 +163,15 @@ function StudentLayout({ children, activePage }: { children: React.ReactNode; ac
   const user = JSON.parse(localStorage.getItem("user") || "{}");
   const initial = (user?.email || "S").charAt(0).toUpperCase();
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="h-14 bg-white border-b border-gray-100 flex items-center px-6 justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2">
+          <button onClick={() => setMobileOpen(true)} className="md:hidden p-2 rounded-md bg-white/90 mr-2">
+            <Menu />
+          </button>
           <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-xs font-bold">PW</span>
           </div>
@@ -176,7 +182,7 @@ function StudentLayout({ children, activePage }: { children: React.ReactNode; ac
         </div>
       </header>
       <div className="flex">
-        <aside className="w-56 min-h-[calc(100vh-56px)] bg-white border-r border-gray-100 p-4 sticky top-14">
+        <aside className="hidden md:block w-56 min-h-[calc(100vh-56px)] bg-white border-r border-gray-100 p-4 sticky top-14">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold px-2 mb-3">Quick Menu</p>
           <nav className="space-y-1">
             {navItems.map((item) => {
