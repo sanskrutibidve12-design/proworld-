@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import {
   CheckCircle2, Clock, XCircle, Filter,
-  Bell, ChevronRight, Loader2, RefreshCw
+  Bell, ChevronRight, Loader2, RefreshCw, Menu
 } from "lucide-react";
+import { Sheet, SheetContent } from "@/components/ui/sheet";
 
-const BASE = "http://127.0.0.1:8000/api";
+const BASE = "https://proworld-tech.onrender.com/api";
 
 function authHeaders() {
   const token = localStorage.getItem("token");
@@ -74,10 +75,15 @@ function StudentLayout({
     navigate("/login");
   };
 
+  const [mobileOpen, setMobileOpen] = useState(false);
+
   return (
     <div className="min-h-screen bg-gray-50 font-sans">
       <header className="h-14 bg-white border-b border-gray-100 flex items-center px-6 justify-between sticky top-0 z-40">
         <div className="flex items-center gap-2">
+          <button onClick={() => setMobileOpen(true)} className="md:hidden p-2 rounded-md bg-white/90 mr-2">
+            <Menu />
+          </button>
           <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
             <span className="text-white text-xs font-bold">PW</span>
           </div>
@@ -92,7 +98,7 @@ function StudentLayout({
       </header>
 
       <div className="flex">
-        <aside className="w-56 min-h-[calc(100vh-56px)] bg-white border-r border-gray-100 p-4 sticky top-14">
+        <aside className="hidden md:block w-56 min-h-[calc(100vh-56px)] bg-white border-r border-gray-100 p-4 sticky top-14">
           <p className="text-[10px] uppercase tracking-widest text-gray-400 font-semibold px-2 mb-3">
             Quick Menu
           </p>
@@ -125,6 +131,40 @@ function StudentLayout({
 
         <main className="flex-1 p-6">{children}</main>
       </div>
+
+      {/* Mobile sheet for sidebar */}
+      <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
+        <SheetContent side="left">
+          <div className="w-64 h-full bg-white text-gray-900 flex flex-col">
+            <div className="px-6 py-5 flex items-center gap-3 border-b border-gray-100">
+              <div className="w-7 h-7 bg-blue-600 rounded-lg flex items-center justify-center">
+                <span className="text-white text-xs font-bold">PW</span>
+              </div>
+              <span className="font-bold text-gray-900 text-sm">Pro-World Technology</span>
+            </div>
+
+            <nav className="flex-1 px-3 py-4 space-y-0.5 overflow-y-auto">
+              <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-widest px-3 pb-2 pt-1">Quick Menu</p>
+              {navItems.map((item) => {
+                const isActive = item.label === activePage;
+                return (
+                  <button
+                    key={item.label}
+                    onClick={() => { navigate(item.href); setMobileOpen(false); }}
+                    className={`flex items-center justify-between w-full px-3 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      isActive ? "bg-blue-600 text-white" : "text-gray-600 hover:bg-gray-50 hover:text-gray-900"
+                    }`}
+                  >
+                    {item.label}
+                    {isActive && <ChevronRight size={14} />}
+                  </button>
+                );
+              })}
+              <button onClick={() => { handleLogout(); setMobileOpen(false); }} className="flex items-center w-full px-3 py-2.5 rounded-xl text-sm font-medium text-red-500 hover:bg-red-50 transition-all mt-4">Logout</button>
+            </nav>
+          </div>
+        </SheetContent>
+      </Sheet>
     </div>
   );
 }
