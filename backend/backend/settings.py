@@ -84,9 +84,10 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
-
+from dotenv import load_dotenv
+load_dotenv()  # Load environment variables from .env file
 DATABASES = {
-    'default':dj_database_url.config(default=os.getenv("DATABASE_URL"))
+    'default':dj_database_url.config()
 }
 
 
